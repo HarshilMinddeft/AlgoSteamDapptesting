@@ -1,0 +1,198 @@
+#pragma version 10
+
+smart_contracts.steam.contract.Steam.approval_program:
+    callsub __puya_arc4_router__
+    return
+
+
+// smart_contracts.steam.contract.Steam.__puya_arc4_router__() -> uint64:
+__puya_arc4_router__:
+    proto 0 1
+    txn NumAppArgs
+    bz __puya_arc4_router___after_if_else@9
+    method "createApplication()void"
+    method "startStream(account,uint64,uint64)void"
+    method "withdraw(uint64)void"
+    method "stopStream()void"
+    txna ApplicationArgs 0
+    match __puya_arc4_router___createApplication_route@2 __puya_arc4_router___startStream_route@3 __puya_arc4_router___withdraw_route@4 __puya_arc4_router___stopStream_route@5
+    int 0
+    retsub
+
+__puya_arc4_router___createApplication_route@2:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    !
+    assert // is creating
+    callsub createApplication
+    int 1
+    retsub
+
+__puya_arc4_router___startStream_route@3:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txna ApplicationArgs 1
+    btoi
+    txnas Accounts
+    txna ApplicationArgs 2
+    btoi
+    txna ApplicationArgs 3
+    btoi
+    callsub startStream
+    int 1
+    retsub
+
+__puya_arc4_router___withdraw_route@4:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txna ApplicationArgs 1
+    btoi
+    callsub withdraw
+    int 1
+    retsub
+
+__puya_arc4_router___stopStream_route@5:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub stopStream
+    int 1
+    retsub
+
+__puya_arc4_router___after_if_else@9:
+    int 0
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.createApplication() -> void:
+createApplication:
+    proto 0 0
+    byte "streamRate"
+    int 0
+    app_global_put
+    byte "startTime"
+    int 0
+    app_global_put
+    byte "withdrawnAmount"
+    int 0
+    app_global_put
+    byte "recipient"
+    global CreatorAddress
+    app_global_put
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.startStream(recipient: bytes, rate: uint64, amount: uint64) -> void:
+startStream:
+    proto 3 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    byte "recipient"
+    frame_dig -3
+    app_global_put
+    byte "streamRate"
+    frame_dig -2
+    app_global_put
+    byte "startTime"
+    global LatestTimestamp
+    app_global_put
+    byte "withdrawnAmount"
+    int 0
+    app_global_put
+    itxn_begin
+    global CurrentApplicationAddress
+    frame_dig -1
+    itxn_field Amount
+    itxn_field Receiver
+    int pay
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.withdraw(amount: uint64) -> void:
+withdraw:
+    proto 1 0
+    txn Sender
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    ==
+    assert
+    callsub _calculateStreamedAmount
+    frame_dig -1
+    >=
+    assert
+    itxn_begin
+    int 0
+    byte "recipient"
+    app_global_get_ex
+    assert // check self.recipient exists
+    frame_dig -1
+    itxn_field Amount
+    itxn_field Receiver
+    int pay
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    int 0
+    byte "withdrawnAmount"
+    app_global_get_ex
+    assert // check self.withdrawnAmount exists
+    frame_dig -1
+    +
+    byte "withdrawnAmount"
+    swap
+    app_global_put
+    retsub
+
+
+// smart_contracts.steam.contract.Steam._calculateStreamedAmount() -> uint64:
+_calculateStreamedAmount:
+    proto 0 1
+    global LatestTimestamp
+    int 0
+    byte "startTime"
+    app_global_get_ex
+    assert // check self.startTime exists
+    -
+    int 0
+    byte "streamRate"
+    app_global_get_ex
+    assert // check self.streamRate exists
+    *
+    int 0
+    byte "withdrawnAmount"
+    app_global_get_ex
+    assert // check self.withdrawnAmount exists
+    -
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.stopStream() -> void:
+stopStream:
+    proto 0 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    byte "streamRate"
+    int 0
+    app_global_put
+    retsub

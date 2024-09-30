@@ -1,12 +1,15 @@
 from algopy import *
 
+# Algorand continuous MoneyStream contract V1
+# Contract is designed for continuous AlgoStream from creator/sender's contract to recipient account.
+# Creator can re-create new stream after stoping current stream.
 
 class Steam(ARC4Contract):
     # State variables
     streamRate: UInt64  # MicroAlgos per second
-    startTime: UInt64
+    startTime: UInt64   # Records Start time when stream is created
     endTime: UInt64  # Time when all funds will be streamed
-    withdrawnAmount: UInt64
+    withdrawnAmount: UInt64 # Total withdraw Amount updates after each withdraw.
     recipient: Account  # Recipient account
     balance: UInt64  # Keep track of contract balance
     isStreaming: bool  # Track streaming status
@@ -14,6 +17,7 @@ class Steam(ARC4Contract):
     last_withdrawal_time: UInt64  # New variable to track last withdrawal time
 
     # Create application and initialize state variables
+    # createApplication is like constructor Deploys application to blockchain
     @arc4.abimethod(allow_actions=["NoOp"], create="require")
     def createApplication(self) -> None:
         self.streamRate = UInt64(0)
@@ -30,7 +34,7 @@ class Steam(ARC4Contract):
     @arc4.abimethod(allow_actions=["NoOp"])
     def startStream(self, recipient: Account, rate: UInt64, amount: UInt64) -> None:
         assert Txn.sender == Global.creator_address  # only creator can start
-
+        assert self.isStreaming == False
         # Store stream parameters
         self.recipient = recipient
         self.streamRate = rate
@@ -139,3 +143,32 @@ class Steam(ARC4Contract):
     @arc4.abimethod(allow_actions=["NoOp"])
     def getStreamEndTime(self) -> UInt64:
         return self.endTime
+
+    # Contract will be of no use after
+    @arc4.abimethod(allow_actions=["DeleteApplication"])
+    def deleteContract(self) -> None:
+        assert Txn.sender == Global.creator_address
+
+        streamed_amount = self._calculateStreamedAmount()
+
+        # Transfer the streamed amount to the recipient
+        if streamed_amount > UInt64(0):
+            itxn.InnerTransaction(
+                sender=Global.current_application_address,
+                receiver=self.recipient,
+                amount=streamed_amount,
+                note=b"Final payment to recipient",
+                type=TransactionType.Payment,
+            ).submit()
+
+        # Transfer the remaining balance to the creator.
+        remaining_balance = self.balance - streamed_amount  # No use
+        if remaining_balance > UInt64(0):  # No use
+            itxn.InnerTransaction(
+                sender=Global.current_application_address,
+                receiver=Global.creator_address,
+                amount=0,
+                note=b"Remaining funds returned to creator",
+                type=TransactionType.Payment,
+                close_remainder_to=Global.creator_address,
+            ).submit()

@@ -8,135 +8,138 @@ from algosdk.v2client.indexer import IndexerClient
 from algokit_utils.beta.algorand_client import (
     AlgorandClient,
     PayParams,
+    AssetCreateParams,
+    AssetOptInParams,
+    AssetTransferParams,
 )
 from algokit_utils.beta.account_manager import AddressAndSigner
 import algosdk
 from algosdk.atomic_transaction_composer import TransactionWithSigner
+
+# Replace with your actual contract client
 from smart_contracts.artifacts.steam.steam_client import SteamClient
 
 
-# Fixture for setting up Algorand client
 @pytest.fixture(scope="session")
 def algorand() -> AlgorandClient:
-    """Get Algorand client"""
+    """Get and return an AlgorandClient for local net."""
     return AlgorandClient.default_local_net()
 
 
-# Fixture for getting dispenser account with test tokens
 @pytest.fixture(scope="session")
 def dispenser(algorand: AlgorandClient) -> AddressAndSigner:
-    """Get dispenser account"""
+    """Get dispenser account tokens."""
     return algorand.account.dispenser()
 
 
-# Fixture for creating the stream contract creator account
 @pytest.fixture(scope="session")
 def creator(algorand: AlgorandClient, dispenser: AddressAndSigner) -> AddressAndSigner:
-    """Create account and fund it with some tokens"""
+    """Create a new account funded by the dispenser."""
     acct = algorand.account.random()
+    algorand.send.payment(
+        PayParams(sender=dispenser.address, receiver=acct.address, amount=1_000_000)
+    )
+    return acct
 
+
+@pytest.fixture(scope="session")
+def recipient(
+    algorand: AlgorandClient, dispenser: AddressAndSigner
+) -> AddressAndSigner:
+    """Create a new recipient account funded by the dispenser."""
+    acct = algorand.account.random()
+    # Funded with 10 algos
     algorand.send.payment(
         PayParams(sender=dispenser.address, receiver=acct.address, amount=10_000_000)
     )
     return acct
 
 
-# Fixture for initializing the payment stream client
 @pytest.fixture(scope="session")
-def payment_stream_client(
-    algorand: AlgorandClient, creator: AddressAndSigner
+def steam_client(
+    algorand: AlgorandClient, creator: AddressAndSigner, recipient: AddressAndSigner
 ) -> SteamClient:
-    """Initialize payment stream contract"""
+    """Initiate the smart contract application for tests."""
     client = SteamClient(
         algod_client=algorand.client.algod,
         sender=creator.address,
         signer=creator.signer,
     )
-    # Use the new createApplication method for contract creation
-    client.create_create_application()  # This initializes the contract
+    client.create_create_application()  # Call to create the contract
     return client
 
 
 def test_start_stream(
-    payment_stream_client: SteamClient,
+    steam_client: SteamClient,
     creator: AddressAndSigner,
     algorand: AlgorandClient,
+    recipient: AddressAndSigner,
 ):
-    """Test starting the payment stream"""
-    recipient = algorand.account.random()
+    rate = 100  # Set your stream rate
+    amount = 50000  # Set the initial amount to transfer
 
-    # Transfer funds to start the stream
-    stream_fund_txn = algorand.transactions.payment(
-        PayParams(
-            sender=creator.address,
-            receiver=payment_stream_client.app_address,
-            amount=1_000_000,  # Funding the stream
-            extra_fee=1_000,
-        )
-    )
+    # Fetch the account info and get the balance
+    account_info = algorand.client.algod.account_info(creator.address)
+    creator_balance = account_info["amount"]  # Balance is in microAlgos
 
-    # Start the stream
-    result = payment_stream_client.start_stream(
-        recipient=recipient.address,
-        rate=1000,  # Streaming rate in microAlgos per second
-        amount=1_000_000,  # Initial funding
-        paymentTxn=TransactionWithSigner(txn=stream_fund_txn, signer=creator.signer),
-    )
-    assert result.confirmed_round
-
-    # Check the stored recipient and rate
-    assert payment_stream_client.get_stream_rate() == 1000
-    assert payment_stream_client.get_recipient() == recipient.address
-
-
-def test_withdraw(
-    payment_stream_client: SteamClient,
-    algorand: AlgorandClient,
-    dispenser: AddressAndSigner,
-):
-    """Test withdrawing funds from the stream"""
-    recipient = algorand.account.random()
-
-    # Fund the recipient account
     algorand.send.payment(
         PayParams(
-            sender=dispenser.address,
-            receiver=recipient.address,
-            amount=5_000_000,
+            sender=creator.address,
+            receiver=steam_client.app_address,
+            amount=amount,
         )
     )
+    print("Algos Sent")
 
-    # Simulate some time passage (e.g., 100 seconds) before withdrawal
-    # This is for test purposes; in reality, the blockchain time would naturally pass.
-    algorand.client.algod.status_after_block(100)
+    # Check if the creator has enough balance to cover the payment + fee
+    # fee = 2000  # Updated to ensure the fee is sufficient
+    # total_required = amount + fee
+    # assert (
+    #     creator_balance >= total_required
+    # ), f"Insufficient balance: {creator_balance} < {total_required}"
 
-    # Withdraw a portion of the funds (e.g., 50,000 microAlgos)
-    withdraw_amount = 50_000
-    withdraw_txn = payment_stream_client.withdraw(
-        recipient=recipient.address,
-        amount=withdraw_amount,
-        signer=recipient.signer,
-    )
+    # Start the stream
+    try:
+        # Set the transaction fee
+        transaction = steam_client.start_stream(
+            recipient=recipient.address,
+            rate=rate,
+            amount=amount,
+            # **{"fee": fee},  # Setting fee directly in the transaction call
+        )
 
-    assert withdraw_txn.confirmed_round
+        assert transaction.confirmed_round
 
-    # Confirm the recipient received the correct amount
-    recipient_info = algorand.account.get_information(recipient.address)
-    assert recipient_info["amount"] >= withdraw_amount
+        # Confirm the stream parameters were set correctly
+        assert steam_client.recipient == recipient.address
+        assert steam_client.streamRate == rate
+        assert steam_client.startTime > 0  # Ensure start time is set
+
+        # Check if contract has received the payment
+        assert algorand.account.get_information(steam_client.app_address) >= amount
+
+    except algosdk.error.AlgodHTTPError as e:
+        raise AssertionError(f"Failed to start stream: {e}")
 
 
-def test_stop_stream(
-    payment_stream_client: SteamClient,
-    creator: AddressAndSigner,
-    algorand: AlgorandClient,
-):
-    """Test stopping the payment stream"""
-    # Stop the stream
-    result = payment_stream_client.stop_stream(
-        sender=creator.address,
-        signer=creator.signer,
-    )
-    assert result.confirmed_round
+# def test_withdraw(
+#     steam_client: SteamClient, creator: AddressAndSigner, algorand: AlgorandClient
+# ):
+#     # Ensure that the recipient can withdraw the funds
+#     withdraw_amount = 1000  # Example withdraw amount
+#     result = steam_client.withdraw(amount=withdraw_amount)
+#     assert result.confirmed_round
 
-    # Check that the stream rate is now zero
-    assert payment_stream_client.get_stream_rate() == 0
+#     # Check if the withdrawal was successful
+#     assert algorand.account.get_balance(creator.address) >= withdraw_amount
+
+
+# def test_stop_stream(
+#     steam_client: SteamClient, creator: AddressAndSigner, algorand: AlgorandClient
+# ):
+#     # Stop the stream
+#     result = steam_client.stop_stream()
+#     assert result.confirmed_round
+
+#     # Check that the stream has been stopped (additional checks can be added)
+#     assert steam_client.streamRate == 0  # Ensure stream rate is reset

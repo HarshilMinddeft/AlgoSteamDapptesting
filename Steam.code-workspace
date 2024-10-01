@@ -6,6 +6,9 @@
     },
     {
       "path": "projects/Steam"
+    },
+    {
+      "path": "projects/frontend"
     }
   ],
   "settings": {

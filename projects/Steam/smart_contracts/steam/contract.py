@@ -33,7 +33,12 @@ class Steam(ARC4Contract):
 
     # Start a new stream
     @arc4.abimethod(allow_actions=["NoOp"])
-    def startStream(self, recipient: Account, rate: UInt64, amount: UInt64) -> None:
+    def startStream(
+        self,
+        recipient: Account,
+        rate: UInt64,
+        amount: UInt64,
+    ) -> None:
         assert Txn.sender == Global.creator_address  # only creator can start
         assert self.isStreaming == False
         # Store stream parameters
@@ -85,7 +90,7 @@ class Steam(ARC4Contract):
         elapsed_since_last_withdrawal = (
             Global.latest_timestamp - self.last_withdrawal_time
         )
-        # This is not working here we will implement it in frontend
+
         assert elapsed_since_last_withdrawal >= UInt64(
             2
         ), "Withdrawal can only occur every 2 seconds"  # Adjust as needed
@@ -143,6 +148,7 @@ class Steam(ARC4Contract):
     # Get the estimated end time when the stream will complete
     @arc4.abimethod(allow_actions=["NoOp"])
     def getStreamEndTime(self) -> UInt64:
+
         return self.endTime
 
     # Contract will be of no use after

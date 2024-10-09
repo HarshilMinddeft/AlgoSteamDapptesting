@@ -90,7 +90,7 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
       console.log('Suggested Transaction Params:', suggestedParams)
 
       // Prompt user for a fee
-      const userFee = parseFloat(prompt('Enter the transaction fee in Algos (recommended: 0.01):') || '0.01')
+      const userFee = parseFloat('0.01')
 
       // Validate user fee input
       if (isNaN(userFee) || userFee <= 0) {

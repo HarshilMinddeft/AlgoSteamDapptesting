@@ -14,9 +14,6 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [appId, setAppId] = useState<number>(0)
   const { activeAddress, signer } = useWallet()
-  const [streamRate, setStreamRate] = useState<bigint>(0n)
-  const [recipient, setRecipient] = useState<string>('')
-  const [amount, setAmount] = useState<bigint>(0n)
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)

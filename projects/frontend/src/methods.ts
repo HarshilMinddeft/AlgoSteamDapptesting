@@ -41,7 +41,7 @@ export function startStream(
       const startStreamResult = await steamAbiClient.startStream({ recipient, rate: streamRateInMicroAlgos, amount: amount })
 
       const appAddress = getApplicationAddress(appId)
-      const algoAmount = algokit.microAlgos(Number(amount))
+      const algoAmount = algokit.microAlgos(Number(amount) + 100000)
       console.log('after Stream Rate:', streamRate)
       console.log('After Amount:', algoAmount)
 

@@ -8,7 +8,7 @@ import ConnectWallet from './components/ConnectWallet'
 import MethodCall from './components/MethodCall'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
-import { create, deleteStreamApplication, startStream, stopStream, streamEndTime, withdraw } from './methods'
+import { create, deleteStreamApplication, startStream, stopStream, streamEndTime } from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
 interface HomeProps {}
@@ -24,6 +24,11 @@ const Home: React.FC<HomeProps> = () => {
   const [amount, setAmount] = useState<bigint>(0n)
   const [streamApproxEndTime, setApproxEndTime] = useState<string>('')
   const [streamApproxHoursMins, setstreamApproxHoursMins] = useState<string>('')
+  const [streamContractBalance, setStreamContractBalance] = useState<number>()
+  const [streamStartTime, setStreamStartTime] = useState<string>()
+  const [streamFinishTime, setStreamFinishTime] = useState<string>()
+  const [streamFlowRate, setStreamFlowRate] = useState<number>()
+  const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -53,12 +58,6 @@ const Home: React.FC<HomeProps> = () => {
     await create(algorand, dmClient, activeAddress!, setAppId)()
   }
 
-  const handleWithdraw = async () => {
-    if (activeAddress) {
-      await withdraw(algorand, dmClient, activeAddress, appId)()
-    }
-  }
-
   const streamendtime = async () => {
     await streamEndTime(algorand, dmClient, activeAddress!, appId)()
   }
@@ -84,10 +83,46 @@ const Home: React.FC<HomeProps> = () => {
       setIsStreaming(isStreaming)
     }
   }
+  const fetchContractGlobalStateData = async (steamAbiClient: SteamClient) => {
+    if (activeAddress) {
+      const streamData = await steamAbiClient.getGlobalState()
+      const isStreaming = streamData.isStreaming?.asNumber() ?? 0
+      const TotalContractbalance = streamData.balance?.asNumber() ?? 0
+      const streamfinishTime = streamData.endTime?.asNumber()
+      const streamstartTime = streamData.startTime?.asNumber()
+      const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
+      const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
+
+      //
+      const recipientBytes = streamData.recipient?.asByteArray()
+      if (recipientBytes) {
+        const userAddress = algosdk.encodeAddress(new Uint8Array(recipientBytes))
+        console.log('UserAddress:', userAddress)
+      } else {
+        console.log('Recipient address not found or is invalid.')
+      }
+
+      // Convert in Algos
+      const convTotalwithdrawAmount = TotalwithdrawAmount / 1000000
+      const convstreamalgoFlowRate = streamalgoFlowRate / 1000000
+      const convTotalContractbalance = TotalContractbalance / 1000000
+
+      // Convert Unix timestamps to human-readable dates
+      const formattedStreamStartTime = streamstartTime ? dayjs.unix(streamstartTime).format('MM/DD/YYYY, h:mm:ss A') : 'N/A'
+      const formattedStreamFinishTime = streamfinishTime ? dayjs.unix(streamfinishTime).format('MM/DD/YYYY, h:mm:ss A') : 'N/A'
+
+      setIsStreaming(isStreaming)
+      setStreamContractBalance(convTotalContractbalance)
+      setStreamStartTime(formattedStreamStartTime)
+      setStreamFinishTime(formattedStreamFinishTime)
+      setStreamFlowRate(convstreamalgoFlowRate)
+      setTotalUserWithdraw(convTotalwithdrawAmount)
+    }
+  }
 
   const calculateStreamEndTime = () => {
     if (streamRate > 0n && amount > 0n) {
-      const durationInSeconds = Number(amount) / Number(streamRate) // Calculate duration in seconds
+      const durationInSeconds = Number(amount) / Number(streamRate)
       const endTime = new Date(Date.now() + durationInSeconds * 1000)
       const hours = Math.floor(durationInSeconds / 3600)
       const minutes = Math.floor((durationInSeconds % 3600) / 60)
@@ -101,32 +136,35 @@ const Home: React.FC<HomeProps> = () => {
     if (streamRate > 0 && amount > 0) {
       calculateStreamEndTime()
     } else {
-      setApproxEndTime('') // Reset if inputs are invalid
+      setApproxEndTime('')
     }
   }, [streamRate, amount])
 
-  // Call fetchIsStreaming on component load and after starting/stopping stream
   useEffect(() => {
     if (appId > 0 && dmClient) {
-      // Ensure dmClient exists
-      fetchIsStreaming(dmClient) // Pass dmClient as argument
+      fetchIsStreaming(dmClient)
+      fetchContractGlobalStateData(dmClient)
     }
   }, [appId, activeAddress, dmClient])
 
   return (
     <div className="min-h-screen bg-slate-700">
-      <div className="">
-        <center>
-          <button
-            data-test-id="connect-wallet"
-            className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 "
-            onClick={toggleWalletModal}
-          >
-            Wallet Connection
-          </button>
-        </center>
+      <p className="absolute mt-7 text-xl rounded-2xl text-red-700 bg-slate-400 ">ActiveStream : {isStreaming}</p>
+      <center>
+        <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
+          Wallet Connection
+        </button>
+      </center>
+
+      <div className="hero-content bg-slate-400 p-5 rounded-2xl mx-auto mt-5 mb-5">
+        <p>TotalContractBalance {streamContractBalance} Algos</p>
+        <p>StreamfinishTime :{streamFinishTime}</p>
+        <p>StreamStartTime {streamStartTime}</p>
+        <p>AlgoFlowRate {streamFlowRate} PerSec Algos</p>
+        <p>TotalWithdrawAmount {totalUserWithdraw} Algos</p>
       </div>
-      <div className="hero-content text-center rounded-2xl p-6 max-w-md bg-white mx-auto">
+
+      <div className="hero-content text-center rounded-2xl p-6 max-w-md bg-slate-500 mx-auto">
         <div className="max-w-md">
           <div className="grid">
             <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1>

@@ -4,6 +4,7 @@ import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
 import dayjs from 'dayjs'
 import React, { useEffect, useState } from 'react'
+import AnimatedCounter from './components/AnimatedCounter'
 import ConnectWallet from './components/ConnectWallet'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
@@ -29,6 +30,7 @@ const Home: React.FC<HomeProps> = () => {
   const [streamFlowRate, setStreamFlowRate] = useState<number>(0)
   const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
   const [reciverAddress, setReciverAddress] = useState<string>()
+  const [animationDuration, setAnimationDuration] = useState<number>(0) // New state for animation duration
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -134,6 +136,21 @@ const Home: React.FC<HomeProps> = () => {
     }
   }
 
+  const calculateAnimationDuration = () => {
+    if (streamFlowRate > 0 && amount > 0) {
+      const totalAmount = Number(amount) / 1000000 // Convert to Algos
+      const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
+      setAnimationDuration(totalDuration)
+      console.log(totalDuration)
+    }
+  }
+  useEffect(() => {
+    if (streamFlowRate > 0 && amount > 0) {
+      calculateAnimationDuration()
+      console.log('UseEffect')
+    }
+  }, [streamFlowRate, amount, appId, activeAddress, dmClient])
+
   useEffect(() => {
     if (streamRate > 0 && amount > 0) {
       calculateStreamEndTime()
@@ -174,6 +191,15 @@ const Home: React.FC<HomeProps> = () => {
                 DeployAgreement
               </button>
             )}
+
+            <div className="mt-4">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">Stream Contract Balance</h2>
+              <AnimatedCounter
+                from={streamContractBalance}
+                to={0}
+                duration={animationDuration / 1000} // Convert to seconds for framer-motion
+              />
+            </div>
 
             {/* New fields for starting the stream */}
             {activeAddress && appId > 0 && isStreaming === 0 && (
@@ -239,7 +265,7 @@ const Home: React.FC<HomeProps> = () => {
                   StopStream
                 </button>
                 <button className="btn rounded-3xl text-lg mt-4" onClick={funcdeleteStream}>
-                  DeleteStream
+                  DeleteAgreement
                 </button>
               </div>
             )}

@@ -6,11 +6,11 @@ import dayjs from 'dayjs'
 import React, { useEffect, useState } from 'react'
 import AnimatedCounter from './components/AnimatedCounter'
 import ConnectWallet from './components/ConnectWallet'
+import BlinkBlurB from './components/Loders'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
 import { create, deleteStreamApplication, startStream, stopStream, streamEndTime } from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
-
 interface HomeProps {}
 
 const Home: React.FC<HomeProps> = () => {
@@ -30,7 +30,8 @@ const Home: React.FC<HomeProps> = () => {
   const [streamFlowRate, setStreamFlowRate] = useState<number>(0)
   const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
   const [reciverAddress, setReciverAddress] = useState<string>()
-  const [animationDuration, setAnimationDuration] = useState<number>(0) // New state for animation duration
+  const [animationDuration, setAnimationDuration] = useState<number>(0)
+  const [epochStreamTime, setepochStreamTime] = useState<number>(0)
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -91,10 +92,11 @@ const Home: React.FC<HomeProps> = () => {
       const streamData = await steamAbiClient.getGlobalState()
       const isStreaming = streamData.isStreaming?.asNumber() ?? 0
       const TotalContractbalance = streamData.balance?.asNumber() ?? 0
-      const streamfinishTime = streamData.endTime?.asNumber()
+      const streamfinishTime = streamData.endTime?.asNumber() ?? 0
       const streamstartTime = streamData.startTime?.asNumber()
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
+      setepochStreamTime(streamfinishTime)
 
       //
       const recipientBytes = streamData.recipient?.asByteArray()
@@ -137,19 +139,32 @@ const Home: React.FC<HomeProps> = () => {
   }
 
   const calculateAnimationDuration = () => {
-    if (streamFlowRate > 0 && amount > 0) {
-      const totalAmount = Number(amount) / 1000000 // Convert to Algos
+    // const currentTime = Date.now() // Get the current time in milliseconds
+
+    // console.log('Current Time (ms):', currentTime)
+    // console.log('Stream Finish Time (ms):', epochStreamTime)
+
+    // if (epochStreamTime <= currentTime) {
+    //   setAnimationDuration(0) // Stream is finished, set animation duration to 0
+    //   console.log('Stream has finished.')
+    //   return // Exit the function early
+    // }
+
+    if (streamFlowRate > 0 && streamContractBalance > 0) {
+      const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
       setAnimationDuration(totalDuration)
-      console.log(totalDuration)
+
+      console.log('TTD', totalDuration)
     }
   }
-  useEffect(() => {
-    if (streamFlowRate > 0 && amount > 0) {
-      calculateAnimationDuration()
-      console.log('UseEffect')
-    }
-  }, [streamFlowRate, amount, appId, activeAddress, dmClient])
+
+  // useEffect(() => {
+  //   if (streamFlowRate > 0 && amount > 0) {
+  //     calculateAnimationDuration()
+  //     console.log('UseEffect')
+  //   }
+  // }, [streamFlowRate, amount, appId])
 
   useEffect(() => {
     if (streamRate > 0 && amount > 0) {
@@ -163,19 +178,41 @@ const Home: React.FC<HomeProps> = () => {
     if (appId > 0 && dmClient) {
       fetchIsStreaming(dmClient)
       fetchContractGlobalStateData(dmClient)
+      calculateAnimationDuration()
     }
   }, [appId, activeAddress, dmClient])
 
   return (
-    <div className="min-h-screen bg-slate-700">
+    <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
       <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-700 bg-slate-400 ">ActiveStream : {isStreaming}</p>
       <center>
         <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
           Wallet Connection
         </button>
       </center>
-
-      <div className="text-center rounded-2xl p-6 max-w-md bg-slate-500 mx-auto">
+      {activeAddress && appId > 0 && isStreaming === 1 && (
+        <div>
+          <div className="mt-6 flex max-w-md mx-auto mb-11  ">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
+            <BlinkBlurB></BlinkBlurB>
+            <div className="text-white ml-10 text-xl font-semibold">
+              <AnimatedCounter from={streamContractBalance} to={0} duration={animationDuration / 1000} />
+            </div>
+          </div>
+          {/* <center>
+            <div className="relative mt-6">
+              <img
+                src="/algoImg.png"
+                alt="logo"
+                width={25}
+                height={25}
+                className=" border-white max-w-md border-solid border-2 rounded-full cursor-auto"
+              />
+            </div>
+          </center> */}
+        </div>
+      )}
+      <div className="text-center rounded-2xl  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  mx-auto">
         <div className="max-w-md">
           <div className="grid ">
             {/* <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1> */}
@@ -191,15 +228,6 @@ const Home: React.FC<HomeProps> = () => {
                 DeployAgreement
               </button>
             )}
-
-            <div className="mt-4">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white">Stream Contract Balance</h2>
-              <AnimatedCounter
-                from={streamContractBalance}
-                to={0}
-                duration={animationDuration / 1000} // Convert to seconds for framer-motion
-              />
-            </div>
 
             {/* New fields for starting the stream */}
             {activeAddress && appId > 0 && isStreaming === 0 && (

@@ -32,7 +32,7 @@ const AnimatedCounter = ({ from, to, duration, animationOptions }: AnimatedCount
       ease: 'easeOut',
       ...animationOptions,
       onUpdate(value) {
-        element.textContent = value.toFixed(0)
+        element.textContent = String(value)
       },
     })
 

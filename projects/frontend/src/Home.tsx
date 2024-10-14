@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react'
 import AnimatedCounter from './components/AnimatedCounter'
 import ConnectWallet from './components/ConnectWallet'
 import BlinkBlurB from './components/Loders'
+import Nav from './components/Nav'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
 import { create, deleteStreamApplication, startStream, stopStream, streamEndTime } from './methods'
@@ -187,7 +188,10 @@ const Home: React.FC<HomeProps> = () => {
 
   return (
     <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
-      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
+      <div className="relative">
+        <Nav />
+      </div>
+      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-200 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         ActiveStream : {isStreaming}
       </p>
       <center>
@@ -221,7 +225,7 @@ const Home: React.FC<HomeProps> = () => {
         <div className="max-w-md">
           <div className="grid ">
             {/* <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1> */}
-            <label className="block mt-3 text-lg font-medium text-gray-900 dark:text-white">Your app ID</label>
+            <label className="block mt-3 text-lg font-medium text-gray-900 dark:text-white">Your App ID</label>
             <input
               type="number"
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
@@ -301,10 +305,10 @@ const Home: React.FC<HomeProps> = () => {
                 {/* <button className="btn rounded-full m-2" onClick={streamendtime}>
                   GetEndTime
                 </button> */}
-                <button className="btn rounded-3xl text-lg mr-6 mt-4" onClick={funcStopStream}>
+                <button className="btn rounded-3xl text-lg mr-6 mt-4 bg-red-100" onClick={funcStopStream}>
                   StopStream
                 </button>
-                <button className="btn rounded-3xl text-lg mt-4" onClick={funcdeleteStream}>
+                <button className="btn rounded-3xl text-lg mt-4 bg-red-500" onClick={funcdeleteStream}>
                   DeleteAgreement
                 </button>
               </div>
@@ -314,24 +318,24 @@ const Home: React.FC<HomeProps> = () => {
       </div>
       {activeAddress && appId > 0 && isStreaming === 1 && (
         <div className="hero text-lg">
-          <div className="backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 ">
-            <p className="flex font-medium mt-1">
+          <div className="backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 hover:bg-violet-800 duration-300">
+            <p className="flex text-white font-bold mt-1">
               Receiver <p className="text-white ml-32 mr-2 ">{reciverAddress}</p>
             </p>
-            <p className="flex font-medium mt-1">
+            <p className="flex text-white font-bold mt-1">
               TotalContractBalance <p className="text-green-300 ml-auto mr-2 ">{streamContractBalance} Algos</p>
             </p>
-            <p className="flex font-medium mt-1">
+            <p className="flex text-white font-bold mt-1">
               StreamfinishTime <p className="text-white ml-auto  mr-2 ">{streamFinishTime}</p>
             </p>
-            <p className="flex font-medium mt-1">
+            <p className="flex text-white font-bold mt-1">
               StreamStartTime <p className="text-white ml-auto  mr-2"> {streamStartTime}</p>
             </p>
-            <p className="flex font-medium mt-1">
+            <p className="flex text-white font-bold mt-1">
               AlgoFlowRate <p className="text-white ml-auto  mr-2"> {streamFlowRate} P/Sec Algos</p>
             </p>
-            <p className="flex font-medium mt-1">
-              TotalWithdrawAmount <p className="text-red-500 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
+            <p className="flex text-white font-bold mt-1">
+              TotalWithdrawAmount <p className="text-red-200 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
             </p>
           </div>
         </div>

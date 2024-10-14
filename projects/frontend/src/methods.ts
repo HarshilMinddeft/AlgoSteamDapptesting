@@ -165,6 +165,14 @@ export function streamEndTime(algorand: algokit.AlgorandClient, steamAbiClient: 
   }
 }
 
+export function getCurrentWithdawamount(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, appId: number) {
+  return async () => {
+    const withdrawAmount = await steamAbiClient.getWithdrawAmount({})
+    console.log('CurrentWithdrawAmount', withdrawAmount.return?.toString())
+    return Number(withdrawAmount.return?.toString() || 0) // Handle undefined/null cases
+  }
+}
+
 export function deleteStreamApplication(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, appId: number) {
   return async () => {
     const deleteAapp = await steamAbiClient.delete.deleteContract({}, { sendParams: { fee: algokit.algos(0.01) } })

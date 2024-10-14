@@ -1,30 +1,24 @@
-import { useState } from 'react'
-import './Nav.css'
-
 const Nav = () => {
-  const [selectedNetwork, setSelectedNetwork] = useState('Select Network')
-  const [isVisible, setIsVisible] = useState(false)
-
   return (
-    <div className="borderRadius w-full h-[65px] fixed shadow-lg shadow-[#2A0E61]/50 bg-[#03001470] backdrop-blur-md z-50">
-      <div className="w-full h-full flex flex-row items-center justify-between m-auto">
-        <a href="/" className="h-auto w-auto flex ml-4 flex-row items-center">
-          <img src="/LogoD.webp" alt="logo" width={40} height={50} className="cursor-pointer animate-pulse" />
+    <div className=" w-auto h-[65px] shadow-lg shadow-[#2A0E61]/50 bg-[#03001470] backdrop-blur-md">
+      <div className="w-full h-full flex flex-row ">
+        <a href="/" className="h-auto w-auto flex ml-3 flex-row items-center">
+          <img src="/logoD.webp" alt="logo" width={40} height={50} className="cursor-pointer animate-pulse" />
         </a>
-        <div className="leftnav">
-          <div className="w-[300px] px-[10px] h-full flex flex-row items-center justify-between ml-5">
-            <div className="flex items-center justify-between w-full h-auto border border-[#7042f861] bg-[#0300145e] mr-[15px] px-[20px] py-[10px] rounded-full text-gray-200">
+        <div className="w-full h-full flex flex-row justify-center mr-11">
+          <div className="w-[600px] px-[10px] h-full flex flex-row items-center justify-between ">
+            <div className="flex w-full h-auto border border-[#7042f861] bg-[#0300145e] py-[4px] rounded-full text-gray-200">
               <a
-                href="/userClaim"
-                className="focus:ring focus:outline-none btn btn-primary cursor-pointer font-bold ml-[10px] hidden md:block text-gray-300 no-underline"
+                href="/"
+                className="text-white border mt-1  border-[#2d1672dc] bg-[#0300145e] from-purple-600 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-full ml-5 text-base px-5 py-2 text-center me-2 mb-2"
               >
-                Claim
+                CreatorDashboard
               </a>
               <a
-                href="/userAirdropData"
-                className="btn btn-primary focus:ring focus:outline-none cursor-pointer font-bold ml-[10px] hidden md:block text-gray-300 no-underline"
+                href="/Withdraw"
+                className="text-white border mt-1  border-[#2d1672dc] bg-[#0300145e] from-purple-600 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-full ml-44 text-base px-5 py-2 text-center me-2 mb-2"
               >
-                Create
+                ReciverDashboard
               </a>
             </div>
           </div>

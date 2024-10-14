@@ -16,6 +16,7 @@ class Steam(ARC4Contract):
     isStreaming: bool  # Track streaming status
     last_start_time: UInt64  # New variable to inspect the start time
     last_withdrawal_time: UInt64  # New variable to track last withdrawal time
+    last_withdrawal_Amount: UInt64  # Amount of algos user Withdraw
 
     # Create application and initialize state variables
     # createApplication is like constructor Deploys application to blockchain
@@ -30,6 +31,7 @@ class Steam(ARC4Contract):
         self.isStreaming = bool(False)
         self.last_start_time = UInt64(0)  # Initialize last start time
         self.last_withdrawal_time = UInt64(0)  # Initialize last withdrawal time
+        self.last_withdrawal_Amount = UInt64(0)
 
     # Start a new stream
     @arc4.abimethod(allow_actions=["NoOp"])
@@ -77,7 +79,7 @@ class Steam(ARC4Contract):
     @arc4.abimethod(allow_actions=["NoOp"])
     def withdraw(self) -> None:
         assert Txn.sender == self.recipient  # Only the recipient can withdraw
-
+        last_withdrawal_Amount = self._calculateStreamedAmount()
         available_amount = self._calculateStreamedAmount()
 
         # Ensure the available amount does not exceed the contract balance
@@ -148,8 +150,12 @@ class Steam(ARC4Contract):
     # Get the estimated end time when the stream will complete
     @arc4.abimethod(allow_actions=["NoOp"])
     def getStreamEndTime(self) -> UInt64:
-
         return self.endTime
+
+    @arc4.abimethod(allow_actions=["NoOp"])
+    def getWithdrawAmount(self) -> UInt64:
+
+        return self._calculateStreamedAmount()
 
     # Contract will be of no use after
     @arc4.abimethod(allow_actions=["DeleteApplication"])

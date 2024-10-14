@@ -9,15 +9,16 @@ smart_contracts.steam.contract.Steam.approval_program:
 __puya_arc4_router__:
     proto 0 1
     txn NumAppArgs
-    bz __puya_arc4_router___after_if_else@11
+    bz __puya_arc4_router___after_if_else@12
     method "createApplication()void"
     method "startStream(account,uint64,uint64)void"
     method "withdraw()void"
     method "stopStream()void"
     method "getStreamEndTime()uint64"
+    method "getWithdrawAmount()uint64"
     method "deleteContract()void"
     txna ApplicationArgs 0
-    match __puya_arc4_router___createApplication_route@2 __puya_arc4_router___startStream_route@3 __puya_arc4_router___withdraw_route@4 __puya_arc4_router___stopStream_route@5 __puya_arc4_router___getStreamEndTime_route@6 __puya_arc4_router___deleteContract_route@7
+    match __puya_arc4_router___createApplication_route@2 __puya_arc4_router___startStream_route@3 __puya_arc4_router___withdraw_route@4 __puya_arc4_router___stopStream_route@5 __puya_arc4_router___getStreamEndTime_route@6 __puya_arc4_router___getWithdrawAmount_route@7 __puya_arc4_router___deleteContract_route@8
     int 0
     retsub
 
@@ -84,7 +85,22 @@ __puya_arc4_router___getStreamEndTime_route@6:
     int 1
     retsub
 
-__puya_arc4_router___deleteContract_route@7:
+__puya_arc4_router___getWithdrawAmount_route@7:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    callsub getWithdrawAmount
+    itob
+    byte 0x151f7c75
+    swap
+    concat
+    log
+    int 1
+    retsub
+
+__puya_arc4_router___deleteContract_route@8:
     txn OnCompletion
     int DeleteApplication
     ==
@@ -95,7 +111,7 @@ __puya_arc4_router___deleteContract_route@7:
     int 1
     retsub
 
-__puya_arc4_router___after_if_else@11:
+__puya_arc4_router___after_if_else@12:
     int 0
     retsub
 
@@ -128,6 +144,9 @@ createApplication:
     int 0
     app_global_put
     byte "last_withdrawal_time"
+    int 0
+    app_global_put
+    byte "last_withdrawal_Amount"
     int 0
     app_global_put
     retsub
@@ -206,6 +225,8 @@ withdraw:
     assert // check self.recipient exists
     ==
     assert
+    callsub _calculateStreamedAmount
+    pop
     callsub _calculateStreamedAmount
     dup
     int 0
@@ -396,6 +417,13 @@ getStreamEndTime:
     byte "endTime"
     app_global_get_ex
     assert // check self.endTime exists
+    retsub
+
+
+// smart_contracts.steam.contract.Steam.getWithdrawAmount() -> uint64:
+getWithdrawAmount:
+    proto 0 1
+    callsub _calculateStreamedAmount
     retsub
 
 

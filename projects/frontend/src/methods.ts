@@ -170,3 +170,16 @@ export function deleteStreamApplication(algorand: algokit.AlgorandClient, steamA
     const deleteAapp = await steamAbiClient.delete.deleteContract({}, { sendParams: { fee: algokit.algos(0.01) } })
   }
 }
+
+// <input
+// type="number"
+// placeholder="Stream Rate (μAlgos/sec)"
+// className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+// value={Number(streamRate) / 1e6}
+// onChange={(e) => {
+//   const inputVal = e.currentTarget.valueAsNumber
+//   const bigintVal = BigInt(Math.round(inputVal * 1e6)) // Convert the decimal to μAlgos as BigInt
+//   console.log('FlowRateAs', bigintVal)
+//   setStreamRate(bigintVal)
+// }}
+// />

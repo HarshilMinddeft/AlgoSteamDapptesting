@@ -32,6 +32,7 @@ const Home: React.FC<HomeProps> = () => {
   const [reciverAddress, setReciverAddress] = useState<string>()
   const [animationDuration, setAnimationDuration] = useState<number>(0)
   const [epochStreamTime, setepochStreamTime] = useState<number>(0)
+  const [applicationAddress, getapplicationAddress] = useState<string>()
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -50,11 +51,12 @@ const Home: React.FC<HomeProps> = () => {
     algorand.client.algod,
   )
 
-  const getApplicationAddress = (appId: number): string => {
-    return algosdk.getApplicationAddress(appId)
-  }
+  // const getApplicationAddress = (appId: number): string => {
+  //   return algosdk.getApplicationAddress(appId)
+  // }
 
-  const appAddress = getApplicationAddress(appId)
+  // const appAddress = getApplicationAddress(appId)
+  // getapplicationAddress(appAddress)
 
   // Create stream method reference
   const createStream = async () => {
@@ -96,6 +98,7 @@ const Home: React.FC<HomeProps> = () => {
       const streamstartTime = streamData.startTime?.asNumber()
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
+
       setepochStreamTime(streamfinishTime)
 
       //
@@ -144,7 +147,7 @@ const Home: React.FC<HomeProps> = () => {
     // console.log('Current Time (ms):', currentTime)
     // console.log('Stream Finish Time (ms):', epochStreamTime)
 
-    // if (epochStreamTime <= currentTime) {
+    // if (epochStreamTime < currentTime) {
     //   setAnimationDuration(0) // Stream is finished, set animation duration to 0
     //   console.log('Stream has finished.')
     //   return // Exit the function early
@@ -184,7 +187,9 @@ const Home: React.FC<HomeProps> = () => {
 
   return (
     <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
-      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-700 bg-slate-400 ">ActiveStream : {isStreaming}</p>
+      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
+        ActiveStream : {isStreaming}
+      </p>
       <center>
         <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
           Wallet Connection
@@ -250,10 +255,12 @@ const Home: React.FC<HomeProps> = () => {
                     type="number"
                     placeholder="Stream Rate (μAlgos/sec)"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    value={streamRate.toString()} // Display as μAlgos (input value)
+                    value={Number(streamRate) / 1e6}
                     onChange={(e) => {
-                      const inputVal = BigInt(e.currentTarget.value || 0)
-                      setStreamRate(inputVal)
+                      const inputVal = e.currentTarget.valueAsNumber
+                      const bigintVal = BigInt(Math.round(inputVal * 1e6)) // Convert the decimal to μAlgos as BigInt
+                      console.log('FlowRateAs', bigintVal)
+                      setStreamRate(bigintVal)
                     }}
                   />
                 </div>
@@ -264,8 +271,13 @@ const Home: React.FC<HomeProps> = () => {
                     type="number"
                     placeholder="Amount (Algos)"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    value={amount.toString()} // Store and display as Algos
-                    onChange={(e) => setAmount(BigInt(e.target.value) || 0n)} // Keep as bigint
+                    value={Number(amount) / 1e6} // Convert microAlgos (BigInt) to Algos for display
+                    onChange={(e) => {
+                      const inputVal = e.target.valueAsNumber // Get the value as a number (in Algos)
+                      const microAlgos = BigInt(Math.round(inputVal * 1e6)) // Convert Algos to microAlgos as BigInt
+                      console.log('InputAmount', microAlgos)
+                      setAmount(microAlgos) // Store as BigInt (μAlgos)
+                    }}
                   />
                 </div>
                 <div className="block text-xl font-medium text-gray-900 dark:text-white">
@@ -298,35 +310,34 @@ const Home: React.FC<HomeProps> = () => {
               </div>
             )}
           </div>
-
-          <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} />
-          <Transact openModal={openDemoModal} setModalState={setOpenDemoModal} />
         </div>
       </div>
       {activeAddress && appId > 0 && isStreaming === 1 && (
         <div className="hero text-lg">
-          <div className="bg-slate-400 p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 ">
+          <div className="backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 ">
             <p className="flex font-medium mt-1">
-              Receiver <p className="text-red-700 ml-32 mr-2 ">{reciverAddress}</p>
+              Receiver <p className="text-white ml-32 mr-2 ">{reciverAddress}</p>
             </p>
             <p className="flex font-medium mt-1">
-              TotalContractBalance <p className="text-green-900 ml-auto mr-2 ">{streamContractBalance} Algos</p>
+              TotalContractBalance <p className="text-green-300 ml-auto mr-2 ">{streamContractBalance} Algos</p>
             </p>
             <p className="flex font-medium mt-1">
-              StreamfinishTime <p className="text-red-700 ml-auto  mr-2 ">{streamFinishTime}</p>
+              StreamfinishTime <p className="text-white ml-auto  mr-2 ">{streamFinishTime}</p>
             </p>
             <p className="flex font-medium mt-1">
-              StreamStartTime <p className="text-red-700 ml-auto  mr-2"> {streamStartTime}</p>
+              StreamStartTime <p className="text-white ml-auto  mr-2"> {streamStartTime}</p>
             </p>
             <p className="flex font-medium mt-1">
-              AlgoFlowRate <p className="text-red-700 ml-auto  mr-2"> {streamFlowRate} P/Sec Algos</p>
+              AlgoFlowRate <p className="text-white ml-auto  mr-2"> {streamFlowRate} P/Sec Algos</p>
             </p>
             <p className="flex font-medium mt-1">
-              TotalWithdrawAmount <p className="text-red-700 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
+              TotalWithdrawAmount <p className="text-red-500 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
             </p>
           </div>
         </div>
       )}
+      <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} />
+      <Transact openModal={openDemoModal} setModalState={setOpenDemoModal} />
     </div>
   )
 }

@@ -4,6 +4,8 @@ import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
 import dayjs from 'dayjs'
 import React, { useEffect, useState } from 'react'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import AnimatedCounter from './components/AnimatedCounter'
 import ConnectWallet from './components/ConnectWallet'
 import BlinkBlurB from './components/Loders'
@@ -19,10 +21,10 @@ const Home: React.FC<HomeProps> = () => {
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [appId, setAppId] = useState<number>(0)
   const { activeAddress, signer } = useWallet()
-  const [streamRate, setStreamRate] = useState<bigint>(0n)
+  const [streamRate, setStreamRate] = useState<bigint>(1000n)
   const [isStreaming, setIsStreaming] = useState<number>(0)
   const [recipient, setRecipient] = useState<string>('')
-  const [amount, setAmount] = useState<bigint>(0n)
+  const [amount, setAmount] = useState<bigint>(1000000n)
   const [streamApproxEndTime, setApproxEndTime] = useState<string>('')
   const [streamApproxHoursMins, setstreamApproxHoursMins] = useState<string>('')
   const [streamContractBalance, setStreamContractBalance] = useState<number>(0)
@@ -33,7 +35,9 @@ const Home: React.FC<HomeProps> = () => {
   const [reciverAddress, setReciverAddress] = useState<string>()
   const [animationDuration, setAnimationDuration] = useState<number>(0)
   const [epochStreamTime, setepochStreamTime] = useState<number>(0)
-  const [applicationAddress, getapplicationAddress] = useState<string>()
+  // const [applicationAddress, getapplicationAddress] = useState<string>()
+  const [userAccountBalance, setUserAccountBalance] = useState<number>()
+  const [timeUnit, setTimeUnit] = useState<string>('hour') // Default to 'hour'
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -51,13 +55,6 @@ const Home: React.FC<HomeProps> = () => {
     },
     algorand.client.algod,
   )
-
-  // const getApplicationAddress = (appId: number): string => {
-  //   return algosdk.getApplicationAddress(appId)
-  // }
-
-  // const appAddress = getApplicationAddress(appId)
-  // getapplicationAddress(appAddress)
 
   // Create stream method reference
   const createStream = async () => {
@@ -78,8 +75,41 @@ const Home: React.FC<HomeProps> = () => {
 
   // Start stream method reference
   const handleStartStream = async () => {
-    await startStream(algorand, dmClient, activeAddress!, streamRate, recipient, amount, appId)()
-    setIsStreaming(1)
+    // Fetch the user's account balance
+    if (!recipient || amount <= 0n || streamRate <= 0n) {
+      toast.error('Please fill out all required fields: recipient address, amount, and stream rate.')
+      return
+    }
+    try {
+      const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
+      const userBalance = accountInfo.amount // Balance in microAlgos
+
+      // Ensure user has enough balance before starting the stream
+      const totalCost = Number(amount) + 2000000 + (streamRate > 0 ? 0.1 * Number(streamRate) : 0) // Adjust totalCost logic as needed
+      console.log('totalCost', totalCost)
+      if (userBalance < totalCost) {
+        toast.error('Insufficient funds to start the stream. Keep 3 extra Algos in wallet for avoiding errors.')
+        return // Exit the function if insufficient funds
+      }
+
+      // Try to start the stream
+      await startStream(algorand, dmClient, activeAddress!, streamRate, recipient, amount, appId)()
+      setIsStreaming(1) // Only set streaming state if startStream is successful
+    } catch (error) {
+      // Check if 'error' is an instance of Error
+      if (error instanceof Error) {
+        // Now TypeScript knows 'error' is of type 'Error'
+        if (error.message.includes('URLTokenBaseHTTPError')) {
+          // Handle the specific error
+          console.error('Caught a URLTokenBaseHTTPError:', error.message)
+        } else {
+          console.error('An error occurred:', error.message)
+        }
+      } else {
+        // If it's not an instance of Error, handle it accordingly
+        console.error('An unknown error occurred:', error)
+      }
+    }
   }
 
   const fetchIsStreaming = async (steamAbiClient: SteamClient) => {
@@ -143,17 +173,6 @@ const Home: React.FC<HomeProps> = () => {
   }
 
   const calculateAnimationDuration = () => {
-    // const currentTime = Date.now() // Get the current time in milliseconds
-
-    // console.log('Current Time (ms):', currentTime)
-    // console.log('Stream Finish Time (ms):', epochStreamTime)
-
-    // if (epochStreamTime < currentTime) {
-    //   setAnimationDuration(0) // Stream is finished, set animation duration to 0
-    //   console.log('Stream has finished.')
-    //   return // Exit the function early
-    // }
-
     if (streamFlowRate > 0 && streamContractBalance > 0) {
       const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
@@ -163,18 +182,65 @@ const Home: React.FC<HomeProps> = () => {
     }
   }
 
-  // useEffect(() => {
-  //   if (streamFlowRate > 0 && amount > 0) {
-  //     calculateAnimationDuration()
-  //     console.log('UseEffect')
-  //   }
-  // }, [streamFlowRate, amount, appId])
+  const userBalanceFetch = async () => {
+    const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
+    const userBalance = accountInfo.amount
+    // console.log('AccountInfo', accountInfo)
+    setUserAccountBalance(userBalance / 1e6)
+  }
+
+  // Conversion factors for time units
+  const timeUnitToSeconds = (unit: string) => {
+    switch (unit) {
+      case 'min':
+        return 60
+      case 'hour':
+        return 3600
+      case 'day':
+        return 86400
+      case 'week':
+        return 604800
+      case 'month':
+        return 2592000 // Approx 30 days
+      case 'year':
+        return 31536000 // Approx 365 days
+      default:
+        return 1 // sec
+    }
+  }
+  const updateStreamRate = (newAmount: bigint, newTimeUnit: string) => {
+    const seconds = timeUnitToSeconds(newTimeUnit)
+    const rate = Number(newAmount) / seconds // μAlgos/sec
+    const bigintRate = BigInt(Math.round(rate)) // μAlgos/sec as BigInt
+    console.log('bigintRate', bigintRate)
+    setStreamRate(bigintRate)
+  }
+
+  const handleTimeUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTimeUnit = e.target.value
+    setTimeUnit(newTimeUnit)
+    updateStreamRate(amount, newTimeUnit)
+  }
+
+  useEffect(() => {
+    if (appId > 0) updateStreamRate(amount, timeUnit)
+    console.log('NewUseEffect')
+  }, []) // Run once on mount
+
+  useEffect(() => {
+    if (dmClient) {
+      console.log('UseEffect userBalanceFetch')
+      userBalanceFetch()
+    }
+  }, [dmClient])
 
   useEffect(() => {
     if (streamRate > 0 && amount > 0) {
       calculateStreamEndTime()
+      console.log('calculateStreamEndTime')
     } else {
       setApproxEndTime('')
+      console.log('setApproxEndTime')
     }
   }, [streamRate, amount])
 
@@ -183,6 +249,7 @@ const Home: React.FC<HomeProps> = () => {
       fetchIsStreaming(dmClient)
       fetchContractGlobalStateData(dmClient)
       calculateAnimationDuration()
+      console.log('fetchIsStreaming,fetchContractGlobalStateData,fetchContractGlobalStateData')
     }
   }, [appId, activeAddress, dmClient])
 
@@ -191,8 +258,16 @@ const Home: React.FC<HomeProps> = () => {
       <div className="relative">
         <Nav />
       </div>
+      <center>
+        <div>
+          <ToastContainer position="top-right" autoClose={3000} />
+        </div>
+      </center>
       <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-200 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         ActiveStream : {isStreaming}
+      </p>
+      <p className="absolute mt-24 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
+        Balance : {userAccountBalance} Algos
       </p>
       <center>
         <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
@@ -208,17 +283,6 @@ const Home: React.FC<HomeProps> = () => {
               <AnimatedCounter from={streamContractBalance} to={0} duration={animationDuration / 1000} />
             </div>
           </div>
-          {/* <center>
-            <div className="relative mt-6">
-              <img
-                src="/algoImg.png"
-                alt="logo"
-                width={25}
-                height={25}
-                className=" border-white max-w-md border-solid border-2 rounded-full cursor-auto"
-              />
-            </div>
-          </center> */}
         </div>
       )}
       <div className="text-center rounded-2xl  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  mx-auto">
@@ -241,7 +305,7 @@ const Home: React.FC<HomeProps> = () => {
             {/* New fields for starting the stream */}
             {activeAddress && appId > 0 && isStreaming === 0 && (
               <div>
-                <h2 className="block mb-2 mt-4 mr-32 text-2xl font-medium text-gray-900 dark:text-white">create payment stream</h2>
+                <h2 className="block mb-2 mt-4  text-2xl font-medium text-gray-900 dark:text-white">Create Payment Stream</h2>
                 <div className="mt-4">
                   <label className="block mr-80 text-lg font-medium text-gray-900 dark:text-white">Address</label>
                   <input
@@ -254,19 +318,32 @@ const Home: React.FC<HomeProps> = () => {
                 </div>
                 <div className="mt-4">
                   <label className="block mr-80 text-lg font-medium text-gray-900 dark:text-white">Flowrate</label>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      placeholder="Stream Rate (μAlgos/sec)"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      value={Number(streamRate) / 1e6}
+                      onChange={(e) => {
+                        const inputVal = e.currentTarget.valueAsNumber
+                        const bigintVal = BigInt(Math.round(inputVal * 1e6)) // Convert the decimal to μAlgos as BigInt
+                        console.log('FlowRateAs', bigintVal)
+                        setStreamRate(bigintVal)
+                      }}
+                    />
 
-                  <input
-                    type="number"
-                    placeholder="Stream Rate (μAlgos/sec)"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    value={Number(streamRate) / 1e6}
-                    onChange={(e) => {
-                      const inputVal = e.currentTarget.valueAsNumber
-                      const bigintVal = BigInt(Math.round(inputVal * 1e6)) // Convert the decimal to μAlgos as BigInt
-                      console.log('FlowRateAs', bigintVal)
-                      setStreamRate(bigintVal)
-                    }}
-                  />
+                    <select
+                      className="ml-4 bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      value={timeUnit}
+                      onChange={handleTimeUnitChange}
+                    >
+                      <option value="hour">Hour</option>
+                      <option value="day">Day</option>
+                      <option value="week">Week</option>
+                      <option value="month">Month</option>
+                      <option value="year">Year</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="mt-4">
                   <label className="block mr-80  text-lg font-medium text-gray-900 dark:text-white">Amount</label>

@@ -19,12 +19,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [appId, setAppId] = useState<number>(0)
   const { activeAddress, signer } = useWallet()
-  const [streamRate, setStreamRate] = useState<bigint>(0n)
   const [isStreaming, setIsStreaming] = useState<number>(0)
-  const [recipient, setRecipient] = useState<string>('')
-  const [amount, setAmount] = useState<bigint>(0n)
-  const [streamApproxEndTime, setApproxEndTime] = useState<string>('')
-  const [streamApproxHoursMins, setstreamApproxHoursMins] = useState<string>('')
   const [currentwithdrawAmount, setCurrentwithdrawAmount] = useState<number>(0)
   const [streamContractBalance, setStreamContractBalance] = useState<number>(0)
   const [streamStartTime, setStreamStartTime] = useState<string>()
@@ -33,6 +28,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
   const [reciverAddress, setReciverAddress] = useState<string>()
   const [animationDuration, setAnimationDuration] = useState<number>(0)
+  const [userAccountBalance, setUserAccountBalance] = useState<number>()
   const [epochStreamTime, setepochStreamTime] = useState<number>(0)
 
   const toggleWalletModal = () => {
@@ -69,17 +65,6 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   }
 
   const calculateAnimationDuration = () => {
-    // const currentTime = Date.now() // Get the current time in milliseconds
-
-    // console.log('Current Time (ms):', currentTime)
-    // console.log('Stream Finish Time (ms):', epochStreamTime)
-
-    // if (epochStreamTime < currentTime) {
-    //   setAnimationDuration(0) // Stream is finished, set animation duration to 0
-    //   console.log('Stream has finished.')
-    //   return // Exit the function early
-    // }
-
     if (streamFlowRate > 0 && streamContractBalance > 0) {
       const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
@@ -131,6 +116,18 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       setTotalUserWithdraw(convTotalwithdrawAmount)
     }
   }
+  const userBalanceFetch = async () => {
+    const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
+    const userBalance = accountInfo.amount
+    // console.log('AccountInfo', accountInfo)
+    setUserAccountBalance(userBalance / 1e6)
+  }
+  useEffect(() => {
+    if (dmClient) {
+      console.log('UseEffect userBalanceFetch')
+      userBalanceFetch()
+    }
+  }, [dmClient])
 
   useEffect(() => {
     if (appId > 0 && dmClient) {
@@ -147,6 +144,9 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       </div>
       <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         ActiveStream : {isStreaming}
+      </p>
+      <p className="absolute mt-24 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
+        Your Balance : {userAccountBalance} Algos
       </p>
       <center>
         <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>

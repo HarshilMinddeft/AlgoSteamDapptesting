@@ -34,16 +34,13 @@ export function startStream(
   return async () => {
     try {
       const streamRateInMicroAlgos = convertToMicroAlgos(streamRate)
-      console.log('before Stream Rate:', streamRateInMicroAlgos)
-      console.log('before Amount:', amount)
+      const appAddress = getApplicationAddress(appId)
+      const algoAmount = algokit.microAlgos(Number(amount) + 100000) // for min bal
+      console.log('after Stream Rate:', streamRate)
+      console.log('After Amount:', algoAmount)
 
       // Start the stream
       const startStreamResult = await steamAbiClient.startStream({ recipient, rate: streamRateInMicroAlgos, amount: amount })
-
-      const appAddress = getApplicationAddress(appId)
-      const algoAmount = algokit.microAlgos(Number(amount) + 100000)
-      console.log('after Stream Rate:', streamRate)
-      console.log('After Amount:', algoAmount)
 
       console.log('Return Params==>', startStreamResult.return)
 
@@ -56,6 +53,9 @@ export function startStream(
       })
       console.log('Payment transaction ID:', paymentTxn.txIds)
       console.log('Payment transaction sent:', paymentTxn.returns)
+
+      console.log('before Stream Rate:', streamRateInMicroAlgos)
+      console.log('before Amount:', amount)
 
       // Log contract state after starting the stream
       const streamData = await steamAbiClient.getGlobalState()
@@ -107,7 +107,6 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
               lastRound: suggestedParams.lastRound,
               genesisID: suggestedParams.genesisID,
               genesisHash: suggestedParams.genesisHash,
-              // flatFee: true, // Use flat fee option
             },
           },
         },
@@ -178,16 +177,3 @@ export function deleteStreamApplication(algorand: algokit.AlgorandClient, steamA
     const deleteAapp = await steamAbiClient.delete.deleteContract({}, { sendParams: { fee: algokit.algos(0.01) } })
   }
 }
-
-// <input
-// type="number"
-// placeholder="Stream Rate (μAlgos/sec)"
-// className="bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-// value={Number(streamRate) / 1e6}
-// onChange={(e) => {
-//   const inputVal = e.currentTarget.valueAsNumber
-//   const bigintVal = BigInt(Math.round(inputVal * 1e6)) // Convert the decimal to μAlgos as BigInt
-//   console.log('FlowRateAs', bigintVal)
-//   setStreamRate(bigintVal)
-// }}
-// />

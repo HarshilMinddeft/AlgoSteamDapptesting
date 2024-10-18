@@ -9,7 +9,7 @@ import BlinkBlurB from './components/Loders'
 import Nav from './components/Nav'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
-import { getCurrentWithdawamount, streamEndTime, withdraw } from './methods'
+import { getCurrentWithdawamount, withdraw } from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
 interface WithdrawProps {}
@@ -25,11 +25,13 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [streamStartTime, setStreamStartTime] = useState<string>()
   const [streamFinishTime, setStreamFinishTime] = useState<string>()
   const [streamFlowRate, setStreamFlowRate] = useState<number>(0)
-  const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
+  const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>(0)
   const [reciverAddress, setReciverAddress] = useState<string>()
+  const [epochStreamStartTime, setepochStreamStartTime] = useState<number>(0)
   const [animationDuration, setAnimationDuration] = useState<number>(0)
   const [userAccountBalance, setUserAccountBalance] = useState<number>()
-  const [epochStreamTime, setepochStreamTime] = useState<number>(0)
+  // const [epochStreamTime, setepochStreamTime] = useState<number>(0)
+  const [finalDisplayAmount, setFinalDisplayAmount] = useState<number>(0)
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -50,27 +52,47 @@ const Withdraw: React.FC<WithdrawProps> = () => {
 
   const handleWithdraw = async () => {
     if (activeAddress) {
-      await withdraw(algorand, dmClient, activeAddress, appId)()
+      try {
+        await withdraw(algorand, dmClient, activeAddress, appId)()
+        await userBalanceFetch()
+        await fetchContractGlobalStateData(dmClient)
+      } catch (error) {
+        console.error('Withdrawal failed', error)
+      }
     }
   }
 
-  const streamendtime = async () => {
-    await streamEndTime(algorand, dmClient, activeAddress!, appId)()
-  }
+  // const streamendtime = async () => {
+  //   await streamEndTime(algorand, dmClient, activeAddress!, appId)()
+  // }  // Was used for accurate testing stream end time off-chain and on-chain
 
   const currentWithdrawAmount = async () => {
     const availableAmount = await getCurrentWithdawamount(algorand, dmClient, activeAddress!, appId)()
     const availableAmountAlgo = availableAmount / 1000000
     setCurrentwithdrawAmount(availableAmountAlgo)
   }
-
+  //FIF
   const calculateAnimationDuration = () => {
     if (streamFlowRate > 0 && streamContractBalance > 0) {
       const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
       setAnimationDuration(totalDuration)
+
+      //////
+      const currentTime = Math.floor(Date.now() / 1000)
+      console.log('currentTime', currentTime)
+      const elapsedtime = currentTime - epochStreamStartTime
+      console.log('elapsedtime', elapsedtime)
+      const TotalStreamed = elapsedtime * streamFlowRate * 1000000
+      console.log('TotalStreamed', TotalStreamed)
+      const elapsedAmount = TotalStreamed - totalUserWithdraw * 1000000
+      const FinalDisplayAmount = elapsedAmount / 1000000
+      setFinalDisplayAmount(FinalDisplayAmount)
+      console.log('elapsedAmount', elapsedAmount / 1000000)
+      //////
     }
   }
+  //FIF
   const fetchIsStreaming = async (steamAbiClient: SteamClient) => {
     if (activeAddress && appId > 0) {
       const streamData = await steamAbiClient.getGlobalState()
@@ -78,17 +100,17 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       setIsStreaming(isStreaming)
     }
   }
+  //FIF
   const fetchContractGlobalStateData = async (steamAbiClient: SteamClient) => {
     if (activeAddress) {
       const streamData = await steamAbiClient.getGlobalState()
       const isStreaming = streamData.isStreaming?.asNumber() ?? 0
       const TotalContractbalance = streamData.balance?.asNumber() ?? 0
       const streamfinishTime = streamData.endTime?.asNumber() ?? 0
-      const streamstartTime = streamData.startTime?.asNumber()
+      const streamstartTime = streamData.startTime?.asNumber() ?? 0
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
-      setepochStreamTime(streamfinishTime)
-
+      setepochStreamStartTime(streamstartTime)
       //
       const recipientBytes = streamData.recipient?.asByteArray()
       if (recipientBytes) {
@@ -116,10 +138,10 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       setTotalUserWithdraw(convTotalwithdrawAmount)
     }
   }
+  //FIF
   const userBalanceFetch = async () => {
     const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
     const userBalance = accountInfo.amount
-    // console.log('AccountInfo', accountInfo)
     setUserAccountBalance(userBalance / 1e6)
   }
   useEffect(() => {
@@ -145,7 +167,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         ActiveStream : {isStreaming}
       </p>
-      <p className="absolute mt-24 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
+      <p className="absolute mt-20 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         Your Balance : {userAccountBalance} Algos
       </p>
       <center>
@@ -159,7 +181,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
             <BlinkBlurB></BlinkBlurB>
             <div className="text-white ml-10 text-xl font-semibold">
-              <AnimatedCounter from={0} to={streamContractBalance} duration={animationDuration / 1000} />
+              <AnimatedCounter from={finalDisplayAmount} to={streamContractBalance} duration={animationDuration / 1000} />
             </div>
           </div>
         </div>
@@ -177,9 +199,6 @@ const Withdraw: React.FC<WithdrawProps> = () => {
             ></input>
             {activeAddress && appId > 0 && isStreaming === 1 && (
               <div className="">
-                {/* <button className="btn rounded-full m-2" onClick={streamendtime}>
-                  GetEndTime
-                </button> */}
                 <button className="btn rounded-3xl  mr-6 text-lg mt-4" onClick={currentWithdrawAmount}>
                   CheckAvailableAmount
                 </button>

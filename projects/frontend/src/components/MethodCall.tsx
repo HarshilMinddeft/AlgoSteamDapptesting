@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 
 interface MethodCallINterface {
   methodFuncition: () => Promise<void>
-  text: string
+  children?: ReactNode
 }
 
-const MethodCall = ({ methodFuncition, text }: MethodCallINterface) => {
+const MethodCall = ({ methodFuncition, children }: MethodCallINterface) => {
   const [loding, setLoding] = useState<boolean>(false)
   const callMethodFunction = async () => {
     setLoding(true)
@@ -13,8 +13,8 @@ const MethodCall = ({ methodFuncition, text }: MethodCallINterface) => {
     setLoding(false)
   }
   return (
-    <button className="btn m-2" onClick={callMethodFunction}>
-      {loding ? <span className="loading loading-spinner" /> : text}
+    <button className="" onClick={callMethodFunction}>
+      {loding ? <span className="loading loading-spinner" /> : ''}
     </button>
   )
 }

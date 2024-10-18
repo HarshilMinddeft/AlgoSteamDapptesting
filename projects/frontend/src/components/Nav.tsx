@@ -2,8 +2,8 @@ const Nav = () => {
   return (
     <div className=" w-auto h-[65px] shadow-lg shadow-[#2A0E61]/50 bg-[#03001470] backdrop-blur-md">
       <div className="w-full h-full flex flex-row ">
-        <a href="/" className="h-auto w-auto flex ml-3 flex-row items-center">
-          <img src="/logoD.webp" alt="logo" width={40} height={50} className="cursor-pointer animate-pulse" />
+        <a className="h-auto w-auto flex ml-3 flex-row items-center">
+          <img src="/logoD.webp" alt="logo" width={40} height={50} className="cursor-default animate-pulse" />
         </a>
         <div className="w-full h-full flex flex-row justify-center mr-11">
           <div className="w-[600px] px-[10px] h-full flex flex-row items-center justify-between ">

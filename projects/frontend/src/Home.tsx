@@ -12,7 +12,7 @@ import BlinkBlurB from './components/Loders'
 import Nav from './components/Nav'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
-import { create, deleteStreamApplication, startStream, stopStream, streamEndTime } from './methods'
+import { create, deleteStreamApplication, startStream, stopStream } from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 interface HomeProps {}
 
@@ -23,6 +23,7 @@ const Home: React.FC<HomeProps> = () => {
   const { activeAddress, signer } = useWallet()
   const [streamRate, setStreamRate] = useState<bigint>(1000n)
   const [isStreaming, setIsStreaming] = useState<number>(0)
+  const [loding, setLoding] = useState<boolean>(false)
   const [recipient, setRecipient] = useState<string>('')
   const [amount, setAmount] = useState<bigint>(1000000n)
   const [streamApproxEndTime, setApproxEndTime] = useState<string>('')
@@ -31,13 +32,12 @@ const Home: React.FC<HomeProps> = () => {
   const [streamStartTime, setStreamStartTime] = useState<string>()
   const [streamFinishTime, setStreamFinishTime] = useState<string>()
   const [streamFlowRate, setStreamFlowRate] = useState<number>(0)
-  const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>()
+  const [totalUserWithdraw, setTotalUserWithdraw] = useState<number>(0)
   const [reciverAddress, setReciverAddress] = useState<string>()
   const [animationDuration, setAnimationDuration] = useState<number>(0)
-  const [epochStreamTime, setepochStreamTime] = useState<number>(0)
-  // const [applicationAddress, getapplicationAddress] = useState<string>()
+  const [epochStreamStartTime, setepochStreamStartTime] = useState<number>(0)
   const [userAccountBalance, setUserAccountBalance] = useState<number>()
-  const [timeUnit, setTimeUnit] = useState<string>('hour') // Default to 'hour'
+  const [timeUnit, setTimeUnit] = useState<string>('') // Default to 'hour'
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -58,19 +58,37 @@ const Home: React.FC<HomeProps> = () => {
 
   // Create stream method reference
   const createStream = async () => {
+    setLoding(true)
     await create(algorand, dmClient, activeAddress!, setAppId)()
+    setLoding(false)
   }
 
-  const streamendtime = async () => {
-    await streamEndTime(algorand, dmClient, activeAddress!, appId)()
-  }
+  // const streamendtime = async () => {
+  //   await streamEndTime(algorand, dmClient, activeAddress!, appId)()
+  // }
 
   const funcStopStream = async () => {
-    await stopStream(algorand, dmClient, activeAddress!, appId)()
+    setLoding(true)
+    await stopStream(algorand, dmClient, activeAddress!, appId, recipient)()
+    setLoding(false)
+    await fetchContractGlobalStateData(dmClient)
+    toast.success('Current Stream Stopped')
   }
 
   const funcdeleteStream = async () => {
-    await deleteStreamApplication(algorand, dmClient, activeAddress!, appId)()
+    try {
+      const deleteConfirmation = await deleteStreamApplication(algorand, dmClient, activeAddress!, appId)()
+      if (deleteConfirmation) {
+        console.log('Contract deletion confirmed:', deleteConfirmation)
+        // await fetchContractGlobalStateData(dmClient)
+        toast.success('Contract Deleted')
+      } else {
+        toast.error('Failed to confirm contract deletion')
+      }
+    } catch (error) {
+      console.error('Error deleting contract:', error)
+      toast.error('Error deleting contract')
+    }
   }
 
   // Start stream method reference
@@ -88,30 +106,29 @@ const Home: React.FC<HomeProps> = () => {
       const totalCost = Number(amount) + 2000000 + (streamRate > 0 ? 0.1 * Number(streamRate) : 0) // Adjust totalCost logic as needed
       console.log('totalCost', totalCost)
       if (userBalance < totalCost) {
-        toast.error('Insufficient funds to start the stream. Keep 3 extra Algos in wallet for avoiding errors.')
+        toast.error('Insufficient funds to start the stream. Keep 2 extra Algos in wallet for avoiding errors.')
         return // Exit the function if insufficient funds
       }
 
       // Try to start the stream
+      toast.info('Confirm payment')
+      setLoding(true)
       await startStream(algorand, dmClient, activeAddress!, streamRate, recipient, amount, appId)()
+      setLoding(false)
       setIsStreaming(1) // Only set streaming state if startStream is successful
     } catch (error) {
-      // Check if 'error' is an instance of Error
       if (error instanceof Error) {
-        // Now TypeScript knows 'error' is of type 'Error'
         if (error.message.includes('URLTokenBaseHTTPError')) {
-          // Handle the specific error
           console.error('Caught a URLTokenBaseHTTPError:', error.message)
         } else {
           console.error('An error occurred:', error.message)
         }
       } else {
-        // If it's not an instance of Error, handle it accordingly
         console.error('An unknown error occurred:', error)
       }
     }
   }
-
+  //FIF
   const fetchIsStreaming = async (steamAbiClient: SteamClient) => {
     if (activeAddress && appId > 0) {
       const streamData = await steamAbiClient.getGlobalState()
@@ -119,20 +136,19 @@ const Home: React.FC<HomeProps> = () => {
       setIsStreaming(isStreaming)
     }
   }
-
+  //FIF
   const fetchContractGlobalStateData = async (steamAbiClient: SteamClient) => {
     if (activeAddress) {
       const streamData = await steamAbiClient.getGlobalState()
       const isStreaming = streamData.isStreaming?.asNumber() ?? 0
       const TotalContractbalance = streamData.balance?.asNumber() ?? 0
       const streamfinishTime = streamData.endTime?.asNumber() ?? 0
-      const streamstartTime = streamData.startTime?.asNumber()
+      const streamstartTime = streamData.startTime?.asNumber() ?? 0
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
 
-      setepochStreamTime(streamfinishTime)
+      setepochStreamStartTime(streamstartTime)
 
-      //
       const recipientBytes = streamData.recipient?.asByteArray()
       if (recipientBytes) {
         const userAddress = algosdk.encodeAddress(new Uint8Array(recipientBytes))
@@ -159,7 +175,7 @@ const Home: React.FC<HomeProps> = () => {
       setTotalUserWithdraw(convTotalwithdrawAmount)
     }
   }
-
+  //FIF
   const calculateStreamEndTime = () => {
     if (streamRate > 0n && amount > 0n) {
       const durationInSeconds = Number(amount) / Number(streamRate)
@@ -171,17 +187,24 @@ const Home: React.FC<HomeProps> = () => {
       setstreamApproxHoursMins(`(${hours} hours, ${minutes} minutes)`)
     }
   }
-
+  //FIF
   const calculateAnimationDuration = () => {
     if (streamFlowRate > 0 && streamContractBalance > 0) {
       const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
+      //////
+      const currentTime = Math.floor(Date.now() / 1000)
+      const elapsedtime = epochStreamStartTime - currentTime
+      const TotalStreamed = elapsedtime * streamFlowRate * 1000000
+      const elapsedAmount = TotalStreamed - totalUserWithdraw * 1000000
+      console.log('elapsedAmount', elapsedAmount / 1000000)
+      //////
       setAnimationDuration(totalDuration)
 
       console.log('TTD', totalDuration)
     }
   }
-
+  //FIF
   const userBalanceFetch = async () => {
     const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
     const userBalance = accountInfo.amount
@@ -193,7 +216,7 @@ const Home: React.FC<HomeProps> = () => {
   const timeUnitToSeconds = (unit: string) => {
     switch (unit) {
       case 'min':
-        return 60
+        return 350
       case 'hour':
         return 3600
       case 'day':
@@ -208,6 +231,7 @@ const Home: React.FC<HomeProps> = () => {
         return 1 // sec
     }
   }
+  //FIF
   const updateStreamRate = (newAmount: bigint, newTimeUnit: string) => {
     const seconds = timeUnitToSeconds(newTimeUnit)
     const rate = Number(newAmount) / seconds // μAlgos/sec
@@ -215,7 +239,7 @@ const Home: React.FC<HomeProps> = () => {
     console.log('bigintRate', bigintRate)
     setStreamRate(bigintRate)
   }
-
+  //FIF
   const handleTimeUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTimeUnit = e.target.value
     setTimeUnit(newTimeUnit)
@@ -249,7 +273,6 @@ const Home: React.FC<HomeProps> = () => {
       fetchIsStreaming(dmClient)
       fetchContractGlobalStateData(dmClient)
       calculateAnimationDuration()
-      console.log('fetchIsStreaming,fetchContractGlobalStateData,fetchContractGlobalStateData')
     }
   }, [appId, activeAddress, dmClient])
 
@@ -263,12 +286,10 @@ const Home: React.FC<HomeProps> = () => {
           <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </center>
-      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-200 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
-        ActiveStream : {isStreaming}
-      </p>
-      <p className="absolute mt-24 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
-        Balance : {userAccountBalance} Algos
-      </p>
+      <div className=" ml-3 pb-2 mt-28 text-xl border-white border-solid border-2 text-white absolute rounded-2xl  p-1 max-w-md backdrop-blur-[5px] bg-[rgba(99,77,136,0.56)] ">
+        <p className=" mt-1 ml-1 ">ActiveStream : {isStreaming}</p>
+        <p className=" mt-2 ml-1 ">Balance : {userAccountBalance} Algos</p>
+      </div>
       <center>
         <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
           Wallet Connection
@@ -285,7 +306,7 @@ const Home: React.FC<HomeProps> = () => {
           </div>
         </div>
       )}
-      <div className="text-center rounded-2xl  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  mx-auto">
+      <div className="text-center rounded-2xl  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(78,62,104,0.56)]  mx-auto">
         <div className="max-w-md">
           <div className="grid ">
             {/* <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1> */}
@@ -298,7 +319,7 @@ const Home: React.FC<HomeProps> = () => {
             ></input>
             {activeAddress && appId === 0 && (
               <button className="btn rounded-3xl text-base mt-4" onClick={createStream}>
-                DeployAgreement
+                {loding ? <span className="loading loading-spinner" /> : 'DeployAgreement'}
               </button>
             )}
 
@@ -333,10 +354,11 @@ const Home: React.FC<HomeProps> = () => {
                     />
 
                     <select
-                      className="ml-4 bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      className="ml-4 bg-gray-50 border border-gray-300 text-gray-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 cursor-pointer"
                       value={timeUnit}
                       onChange={handleTimeUnitChange}
                     >
+                      <option value="min">Min</option>
                       <option value="hour">Hour</option>
                       <option value="day">Day</option>
                       <option value="week">Week</option>
@@ -366,9 +388,18 @@ const Home: React.FC<HomeProps> = () => {
                   {streamApproxEndTime && <h2 className=" mt-1">Stream Ending in: {streamApproxHoursMins.toLocaleString()}</h2>}
                 </div>
                 {activeAddress && (
-                  <div>
-                    <button className="btn rounded-3xl mt-4" onClick={handleStartStream}>
-                      CreateStream
+                  <div className="mt-3">
+                    <button
+                      className="btn rounded-3xl text-lg mt-4 bg-[#fdfdfd] from-green-500 to-green-600 hover:bg-gradient-to-bl"
+                      onClick={handleStartStream}
+                    >
+                      {loding ? <span className="loading loading-spinner" /> : 'CreateStream'}
+                    </button>
+                    <button
+                      className="btn rounded-3xl ml-9 text-lg mt-4 bg-[#fdfdfd] from-red-500 to-red-500 hover:bg-gradient-to-bl"
+                      onClick={funcdeleteStream}
+                    >
+                      DeleteAgreement
                     </button>
                   </div>
                 )}
@@ -383,9 +414,12 @@ const Home: React.FC<HomeProps> = () => {
                   GetEndTime
                 </button> */}
                 <button className="btn rounded-3xl text-lg mr-6 mt-4 bg-red-100" onClick={funcStopStream}>
-                  StopStream
+                  {loding ? <span className="loading loading-spinner" /> : 'StopStream'}
                 </button>
-                <button className="btn rounded-3xl text-lg mt-4 bg-red-500" onClick={funcdeleteStream}>
+                <button
+                  className="btn rounded-3xl text-lg mt-4 bg-[#fdfdfd] from-red-500 to-red-500 hover:bg-gradient-to-bl"
+                  onClick={funcdeleteStream}
+                >
                   DeleteAgreement
                 </button>
               </div>
@@ -395,7 +429,7 @@ const Home: React.FC<HomeProps> = () => {
       </div>
       {activeAddress && appId > 0 && isStreaming === 1 && (
         <div className="hero text-lg">
-          <div className="backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 hover:bg-violet-800 duration-300">
+          <div className="backdrop-blur-[5px] bg-[rgba(72,57,95,0.48)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 hover:bg-violet-800 duration-300">
             <p className="flex text-white font-bold mt-1">
               Receiver <p className="text-white ml-32 mr-2 ">{reciverAddress}</p>
             </p>

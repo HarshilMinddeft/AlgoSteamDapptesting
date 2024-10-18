@@ -112,7 +112,7 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
         },
         {
           sendParams: {
-            fee: algokit.algos(userFee), // Use the user-provided fee
+            fee: algokit.algos(userFee),
           },
         },
       )
@@ -145,21 +145,56 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
   }
 }
 
-export function stopStream(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, appId: number) {
+export function stopStream(
+  algorand: algokit.AlgorandClient,
+  steamAbiClient: SteamClient,
+  sender: string,
+  appId: number,
+  recipient: string,
+) {
   return async () => {
-    const appAddress = getApplicationAddress(appId)
+    try {
+      console.log('recipientaccount')
+      const appAddress = getApplicationAddress(appId)
+      const stopStream = await steamAbiClient.stopStream({}, { sendParams: { fee: algokit.algos(0.01), populateAppCallResources: true } })
+      const streamData = await steamAbiClient.getGlobalState()
+      console.log('StopStream confirmations=>', stopStream.confirmations)
+      // Check if there are inner transactions
+      if (stopStream.confirmations && stopStream.confirmations.length > 0) {
+        const confirmation = stopStream.confirmations[0]
 
-    const stopStream = await steamAbiClient.stopStream({}, { sendParams: { fee: algokit.algos(0.01) } })
-    const streamData = await steamAbiClient.getGlobalState()
+        // Check if inner transactions exist
+        if (confirmation.innerTxns && confirmation.innerTxns.length > 0) {
+          console.log(`Found ${confirmation.innerTxns.length} internal transactions:`)
+
+          // Loop through each internal transaction and log its details
+          confirmation.innerTxns.forEach((innerTxn, index) => {
+            console.log(`Internal Transaction ${index + 1}:`)
+
+            const txnDetails = innerTxn.txn
+
+            console.log('Amount:', Number(txnDetails.txn.amt) / 1000000)
+            console.log('Sender:', algosdk.encodeAddress(txnDetails.txn.snd))
+            console.log('Receiver:', algosdk.encodeAddress(txnDetails.txn.rcv))
+            console.log('First valid round:', txnDetails.txn.fv)
+            console.log('Last valid round:', txnDetails.txn.lv)
+          })
+        } else {
+          console.log('No internal transactions found.')
+        }
+      } else {
+        console.log('No confirmations found.')
+      }
+    } catch (error) {
+      console.log('Error', error)
+    }
   }
 }
 
 export function streamEndTime(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, appId: number) {
   return async () => {
     const appAddress = getApplicationAddress(appId)
-
     const streamendTime = await steamAbiClient.getStreamEndTime({})
-
     console.log('steam End time=>', streamendTime.return?.toString())
   }
 }
@@ -174,6 +209,11 @@ export function getCurrentWithdawamount(algorand: algokit.AlgorandClient, steamA
 
 export function deleteStreamApplication(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, appId: number) {
   return async () => {
-    const deleteAapp = await steamAbiClient.delete.deleteContract({}, { sendParams: { fee: algokit.algos(0.01) } })
+    const deleteAapp = await steamAbiClient.delete.deleteContract(
+      {},
+      { sendParams: { fee: algokit.algos(0.01), populateAppCallResources: true } },
+    )
+    console.log('DeleteappConformations', deleteAapp.confirmations)
+    return deleteAapp.confirmations
   }
 }

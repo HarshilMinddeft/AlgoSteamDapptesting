@@ -2,6 +2,19 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import algosdk from 'algosdk'
 import { SteamClient } from './contracts/Steam'
 
+const validateAppId = async (appId: number) => {
+  try {
+    // Fetch the application information from Algorand network
+    const appInfo = await algosdk.getApplicationAddress(appId)
+
+    // If the app exists, return true
+    return appInfo ? true : false
+  } catch (error) {
+    console.error('Invalid App ID:', error)
+    return false
+  }
+}
+
 export function create(algorand: algokit.AlgorandClient, steamAbiClient: SteamClient, sender: string, setAppId: (id: number) => void) {
   return async () => {
     const createResult = await steamAbiClient.create.createApplication({})
@@ -136,11 +149,13 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
         console.log('Balance Left:', balance)
         console.log('Stream End Time:', endTime)
         console.log('Is Streaming:', isStreaming)
+        return { success: true }
       } else {
-        console.error('Withdrawal failed:', withdrawResult)
+        throw new Error('Withdrawal failed: No confirmation received.')
       }
     } catch (error) {
       console.error('Error during withdrawal:', error)
+      throw error
     }
   }
 }
@@ -203,7 +218,7 @@ export function getCurrentWithdawamount(algorand: algokit.AlgorandClient, steamA
   return async () => {
     const withdrawAmount = await steamAbiClient.getWithdrawAmount({})
     console.log('CurrentWithdrawAmount', withdrawAmount.return?.toString())
-    return Number(withdrawAmount.return?.toString() || 0) // Handle undefined/null cases
+    return Number(withdrawAmount.return?.toString() || 0)
   }
 }
 

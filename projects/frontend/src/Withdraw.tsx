@@ -3,6 +3,7 @@ import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
 import dayjs from 'dayjs'
 import React, { useEffect, useState } from 'react'
+import { ToastContainer, toast } from 'react-toastify'
 import AnimatedCounter from './components/AnimatedCounter'
 import ConnectWallet from './components/ConnectWallet'
 import BlinkBlurB from './components/Loders'
@@ -30,7 +31,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [epochStreamStartTime, setepochStreamStartTime] = useState<number>(0)
   const [animationDuration, setAnimationDuration] = useState<number>(0)
   const [userAccountBalance, setUserAccountBalance] = useState<number>()
-  // const [epochStreamTime, setepochStreamTime] = useState<number>(0)
+  const [epochStreamfinishTime, setepochStreamfinishTime] = useState<number>(0)
   const [finalDisplayAmount, setFinalDisplayAmount] = useState<number>(0)
 
   const toggleWalletModal = () => {
@@ -50,13 +51,63 @@ const Withdraw: React.FC<WithdrawProps> = () => {
     algorand.client.algod,
   )
 
+  const validateAppId = async (inputAppId: number) => {
+    try {
+      // Fetch the application details using the input app ID
+      const appInfo = await algorand.client.algod.getApplicationByID(inputAppId).do()
+
+      if (appInfo) {
+        // If application exists, set the app ID
+        setAppId(inputAppId)
+        toast.success(`App ID ${inputAppId} is valid!`)
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          // If a 404 error occurs (application not found), show an error message
+          toast.error('App ID does not exist. Please enter a valid App ID.')
+          console.error('App ID not found:', error.message)
+        } else {
+          console.error('An error occurred while fetching the app ID:', error.message)
+          toast.error('Failed to validate App ID. Please try again.')
+        }
+      }
+    }
+  }
+
+  const handleAppIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const inputAppId = Number(event.target.value)
+
+    if (!isNaN(inputAppId) && inputAppId > 0) {
+      // Validate the app ID when user enters it
+      validateAppId(inputAppId)
+    } else {
+      toast.error('Please enter a valid number for the App ID.')
+    }
+  }
+
   const handleWithdraw = async () => {
     if (activeAddress) {
       try {
-        await withdraw(algorand, dmClient, activeAddress, appId)()
+        const withdrawConf = await withdraw(algorand, dmClient, activeAddress, appId)()
+        if (withdrawConf?.success) {
+          toast.success('Withdraw success')
+        }
         await userBalanceFetch()
         await fetchContractGlobalStateData(dmClient)
       } catch (error) {
+        if (error instanceof Error) {
+          if (error.message.includes('Rejected by user')) {
+            console.error('Caught a user rejection error:', error.message)
+            toast.error('Transaction rejected by user')
+          } else {
+            if (error.message.includes('opcodes=assert; ==; assert')) console.error('An error occurred during withdrawal:', error.message)
+            toast.error('InvalidUser')
+          }
+        } else {
+          console.error('An unknown error occurred:', error)
+          toast.error('An unknown error occurred')
+        }
         console.error('Withdrawal failed', error)
       }
     }
@@ -76,20 +127,28 @@ const Withdraw: React.FC<WithdrawProps> = () => {
     if (streamFlowRate > 0 && streamContractBalance > 0) {
       const totalAmount = Number(streamContractBalance) // Convert to Algos
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
-      setAnimationDuration(totalDuration)
 
       //////
       const currentTime = Math.floor(Date.now() / 1000)
-      console.log('currentTime', currentTime)
+
+      if (currentTime >= epochStreamfinishTime) {
+        // console.log('Stream has ended')
+        toast.info('Stream has ended')
+        setAnimationDuration(0)
+        setFinalDisplayAmount(streamContractBalance)
+        return // Stop further calculations
+      }
+
       const elapsedtime = currentTime - epochStreamStartTime
-      console.log('elapsedtime', elapsedtime)
+      // console.log('elapsedtime', elapsedtime)
       const TotalStreamed = elapsedtime * streamFlowRate * 1000000
-      console.log('TotalStreamed', TotalStreamed)
+      // console.log('TotalStreamed', TotalStreamed)
       const elapsedAmount = TotalStreamed - totalUserWithdraw * 1000000
       const FinalDisplayAmount = elapsedAmount / 1000000
       setFinalDisplayAmount(FinalDisplayAmount)
-      console.log('elapsedAmount', elapsedAmount / 1000000)
+      // console.log('elapsedAmount', elapsedAmount / 1000000)
       //////
+      setAnimationDuration(totalDuration)
     }
   }
   //FIF
@@ -110,15 +169,16 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       const streamstartTime = streamData.startTime?.asNumber() ?? 0
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
+      setepochStreamfinishTime(streamfinishTime)
       setepochStreamStartTime(streamstartTime)
       //
       const recipientBytes = streamData.recipient?.asByteArray()
       if (recipientBytes) {
         const userAddress = algosdk.encodeAddress(new Uint8Array(recipientBytes))
-        // console.log('UserAddress:', userAddress)
         setReciverAddress(userAddress)
       } else {
         console.log('Recipient address not found or is invalid.')
+        toast.error('Recipient address not found or is invalid')
       }
 
       // Convert in Algos
@@ -138,7 +198,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
       setTotalUserWithdraw(convTotalwithdrawAmount)
     }
   }
-  //FIF
+  //FIF frontend internal function
   const userBalanceFetch = async () => {
     const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
     const userBalance = accountInfo.amount
@@ -146,7 +206,6 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   }
   useEffect(() => {
     if (dmClient) {
-      console.log('UseEffect userBalanceFetch')
       userBalanceFetch()
     }
   }, [dmClient])
@@ -159,11 +218,30 @@ const Withdraw: React.FC<WithdrawProps> = () => {
     }
   }, [appId, activeAddress, dmClient])
 
+  // Effect hook to continuously check the stream status
+  useEffect(() => {
+    if (Date.now() / 1000 < epochStreamfinishTime) {
+      const interval = setInterval(() => {
+        calculateAnimationDuration()
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+    return () => {
+      setFinalDisplayAmount(streamContractBalance)
+      setAnimationDuration(0)
+    }
+  }, [isStreaming, epochStreamfinishTime, streamFlowRate, streamContractBalance])
+
   return (
     <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
       <div className="relative">
         <Nav />
       </div>
+      <center>
+        <div>
+          <ToastContainer position="top-right" autoClose={3000} />
+        </div>
+      </center>
       <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
         ActiveStream : {isStreaming}
       </p>
@@ -195,7 +273,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
               type="number"
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               value={appId}
-              onChange={(e) => setAppId(e.currentTarget.valueAsNumber || 0)}
+              onChange={handleAppIdChange}
             ></input>
             {activeAddress && appId > 0 && isStreaming === 1 && (
               <div className="">

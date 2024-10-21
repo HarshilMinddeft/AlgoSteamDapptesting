@@ -38,6 +38,8 @@ const Home: React.FC<HomeProps> = () => {
   const [epochStreamStartTime, setepochStreamStartTime] = useState<number>(0)
   const [userAccountBalance, setUserAccountBalance] = useState<number>()
   const [timeUnit, setTimeUnit] = useState<string>('') // Default to 'hour'
+  const [displayFlowAmount, setdisplayFlowAmount] = useState(0)
+  const [epochStreamfinishTime, setepochStreamfinishTime] = useState<number>(0)
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -55,6 +57,40 @@ const Home: React.FC<HomeProps> = () => {
     },
     algorand.client.algod,
   )
+
+  const validateAppId = async (inputAppId: number) => {
+    try {
+      // Fetch the application details using the input app ID
+      const appInfo = await algorand.client.algod.getApplicationByID(inputAppId).do()
+
+      if (appInfo) {
+        // If application exists, set the app ID
+        setAppId(inputAppId)
+        toast.success(`App ID ${inputAppId} is valid!`)
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          // If a 404 error occurs (application not found), show an error message
+          toast.error('App ID does not exist. Please enter a valid App ID.')
+          console.error('App ID not found:', error.message)
+        } else {
+          console.error('An error occurred while fetching the app ID:', error.message)
+          toast.error('Failed to validate App ID. Please try again.')
+        }
+      }
+    }
+  }
+  const handleAppIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const inputAppId = Number(event.target.value)
+
+    if (!isNaN(inputAppId) && inputAppId > 0) {
+      // Validate the app ID when user enters it
+      validateAppId(inputAppId)
+    } else {
+      toast.error('Please enter a valid number for the App ID.')
+    }
+  }
 
   // Create stream method reference
   const createStream = async () => {
@@ -87,7 +123,7 @@ const Home: React.FC<HomeProps> = () => {
       }
     } catch (error) {
       console.error('Error deleting contract:', error)
-      toast.error('Error deleting contract')
+      toast.error('Error deleting contract or Invalid User')
     }
   }
 
@@ -104,7 +140,6 @@ const Home: React.FC<HomeProps> = () => {
 
       // Ensure user has enough balance before starting the stream
       const totalCost = Number(amount) + 2000000 + (streamRate > 0 ? 0.1 * Number(streamRate) : 0) // Adjust totalCost logic as needed
-      console.log('totalCost', totalCost)
       if (userBalance < totalCost) {
         toast.error('Insufficient funds to start the stream. Keep 2 extra Algos in wallet for avoiding errors.')
         return // Exit the function if insufficient funds
@@ -146,13 +181,12 @@ const Home: React.FC<HomeProps> = () => {
       const streamstartTime = streamData.startTime?.asNumber() ?? 0
       const streamalgoFlowRate = streamData.streamRate?.asNumber() ?? 0
       const TotalwithdrawAmount = streamData.withdrawnAmount?.asNumber() ?? 0
-
+      setepochStreamfinishTime(streamfinishTime)
       setepochStreamStartTime(streamstartTime)
 
       const recipientBytes = streamData.recipient?.asByteArray()
       if (recipientBytes) {
         const userAddress = algosdk.encodeAddress(new Uint8Array(recipientBytes))
-        // console.log('UserAddress:', userAddress)
         setReciverAddress(userAddress)
       } else {
         console.log('Recipient address not found or is invalid.')
@@ -194,21 +228,27 @@ const Home: React.FC<HomeProps> = () => {
       const totalDuration = (totalAmount / Number(streamFlowRate)) * 1000 // Duration in milliseconds
       //////
       const currentTime = Math.floor(Date.now() / 1000)
-      const elapsedtime = epochStreamStartTime - currentTime
+
+      if (currentTime >= epochStreamfinishTime) {
+        setAnimationDuration(0)
+        setdisplayFlowAmount(0)
+        return // Stop further calculations
+      }
+
+      const elapsedtime = currentTime - epochStreamStartTime
       const TotalStreamed = elapsedtime * streamFlowRate * 1000000
       const elapsedAmount = TotalStreamed - totalUserWithdraw * 1000000
-      console.log('elapsedAmount', elapsedAmount / 1000000)
+      const DisplayAmount = elapsedAmount / 1000000
+      const FinalDisplayAmount = streamContractBalance - DisplayAmount
+      setdisplayFlowAmount(FinalDisplayAmount)
       //////
       setAnimationDuration(totalDuration)
-
-      console.log('TTD', totalDuration)
     }
   }
   //FIF
   const userBalanceFetch = async () => {
     const accountInfo = await algorand.client.algod.accountInformation(activeAddress!).do()
     const userBalance = accountInfo.amount
-    // console.log('AccountInfo', accountInfo)
     setUserAccountBalance(userBalance / 1e6)
   }
 
@@ -236,7 +276,6 @@ const Home: React.FC<HomeProps> = () => {
     const seconds = timeUnitToSeconds(newTimeUnit)
     const rate = Number(newAmount) / seconds // μAlgos/sec
     const bigintRate = BigInt(Math.round(rate)) // μAlgos/sec as BigInt
-    console.log('bigintRate', bigintRate)
     setStreamRate(bigintRate)
   }
   //FIF
@@ -248,12 +287,10 @@ const Home: React.FC<HomeProps> = () => {
 
   useEffect(() => {
     if (appId > 0) updateStreamRate(amount, timeUnit)
-    console.log('NewUseEffect')
   }, []) // Run once on mount
 
   useEffect(() => {
     if (dmClient) {
-      console.log('UseEffect userBalanceFetch')
       userBalanceFetch()
     }
   }, [dmClient])
@@ -261,10 +298,8 @@ const Home: React.FC<HomeProps> = () => {
   useEffect(() => {
     if (streamRate > 0 && amount > 0) {
       calculateStreamEndTime()
-      console.log('calculateStreamEndTime')
     } else {
       setApproxEndTime('')
-      console.log('setApproxEndTime')
     }
   }, [streamRate, amount])
 
@@ -275,9 +310,22 @@ const Home: React.FC<HomeProps> = () => {
       calculateAnimationDuration()
     }
   }, [appId, activeAddress, dmClient])
+  // Effect hook to continuously check the stream status
+  useEffect(() => {
+    if (Date.now() / 1000 < epochStreamfinishTime) {
+      const interval = setInterval(() => {
+        calculateAnimationDuration()
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+    return () => {
+      setdisplayFlowAmount(0)
+      setAnimationDuration(0)
+    }
+  }, [isStreaming, epochStreamfinishTime, streamFlowRate, streamContractBalance])
 
   return (
-    <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
+    <div className="min-h-screen bg-cover " style={{ backgroundImage: "url('/blur.jpeg')" }}>
       <div className="relative">
         <Nav />
       </div>
@@ -301,7 +349,7 @@ const Home: React.FC<HomeProps> = () => {
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
             <BlinkBlurB></BlinkBlurB>
             <div className="text-white ml-10 text-xl font-semibold">
-              <AnimatedCounter from={streamContractBalance} to={0} duration={animationDuration / 1000} />
+              <AnimatedCounter from={displayFlowAmount} to={0} duration={animationDuration / 1000} />
             </div>
           </div>
         </div>
@@ -315,7 +363,7 @@ const Home: React.FC<HomeProps> = () => {
               type="number"
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               value={appId}
-              onChange={(e) => setAppId(e.currentTarget.valueAsNumber || 0)}
+              onChange={handleAppIdChange}
             ></input>
             {activeAddress && appId === 0 && (
               <button className="btn rounded-3xl text-base mt-4" onClick={createStream}>

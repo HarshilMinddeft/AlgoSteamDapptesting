@@ -171,12 +171,12 @@ export function stopStream(
     try {
       console.log('recipientaccount')
       const appAddress = getApplicationAddress(appId)
-      const stopStream = await steamAbiClient.stopStream({}, { sendParams: { fee: algokit.algos(0.01), populateAppCallResources: true } })
+      const stopStreamM = await steamAbiClient.stopStream({}, { sendParams: { fee: algokit.algos(0.01), populateAppCallResources: true } })
       const streamData = await steamAbiClient.getGlobalState()
-      console.log('StopStream confirmations=>', stopStream.confirmations)
+      console.log('StopStream confirmations=>', stopStreamM.confirmations)
       // Check if there are inner transactions
-      if (stopStream.confirmations && stopStream.confirmations.length > 0) {
-        const confirmation = stopStream.confirmations[0]
+      if (stopStreamM.confirmations && stopStreamM.confirmations.length > 0) {
+        const confirmation = stopStreamM.confirmations[0]
 
         // Check if inner transactions exist
         if (confirmation.innerTxns && confirmation.innerTxns.length > 0) {
@@ -190,7 +190,7 @@ export function stopStream(
 
             console.log('Amount:', Number(txnDetails.txn.amt) / 1000000)
             console.log('Sender:', algosdk.encodeAddress(txnDetails.txn.snd))
-            console.log('Receiver:', algosdk.encodeAddress(txnDetails.txn.rcv))
+            // console.log('Receiver:', algosdk.encodeAddress(txnDetails.txn.rcv))
             console.log('First valid round:', txnDetails.txn.fv)
             console.log('Last valid round:', txnDetails.txn.lv)
           })
@@ -201,7 +201,8 @@ export function stopStream(
         console.log('No confirmations found.')
       }
     } catch (error) {
-      console.log('Error', error)
+      // console.log('Error', error)
+      throw error
     }
   }
 }

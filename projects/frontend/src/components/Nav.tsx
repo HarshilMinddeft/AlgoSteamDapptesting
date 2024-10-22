@@ -7,16 +7,17 @@ const Nav = () => {
         </a>
         <div className="w-full h-full flex flex-row justify-center mr-11">
           <div className="w-[600px] px-[10px] h-full flex flex-row items-center justify-between ">
-            <div className="flex w-full h-auto border border-[#7042f861] bg-[#0300145e] py-[4px] rounded-full text-gray-200">
+            <div className="flex w-full h-auto py-[1px] rounded-3xl text-gray-200">
               <a
                 href="/"
-                className="text-white border mt-1  border-[#2d1672dc] bg-[#0300145e] from-purple-600 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-full ml-5 text-base px-5 py-2 text-center me-2 mb-2"
+                className="text-white mt-1 ml-8 border-[#170c31f5] from-[#170c31f5] to-[#170c31f5] hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-xl  text-[19px] px-5 py-2 text-center me-2 mb-2"
               >
                 CreatorDashboard
               </a>
+              <p className="ml-10 mr-10 mt-2 text-2xl">|</p>
               <a
                 href="/Withdraw"
-                className="text-white border mt-1  border-[#2d1672dc] bg-[#0300145e] from-purple-600 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-full ml-44 text-base px-5 py-2 text-center me-2 mb-2"
+                className="text-white  mt-1  border-[#2d1672dc] from-[#170c31f5] to-[#170c31f5] hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-xl  ml-6 text-[19px] px-5 py-2 text-center me-2 mb-2"
               >
                 ReciverDashboard
               </a>

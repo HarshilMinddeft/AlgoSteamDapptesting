@@ -84,7 +84,7 @@ const Home: React.FC<HomeProps> = () => {
   const handleAppIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const inputAppId = Number(event.target.value)
 
-    if (!isNaN(inputAppId) && inputAppId > 0) {
+    if (inputAppId > 0) {
       // Validate the app ID when user enters it
       validateAppId(inputAppId)
     } else {
@@ -104,11 +104,25 @@ const Home: React.FC<HomeProps> = () => {
   // }
 
   const funcStopStream = async () => {
-    setLoding(true)
-    await stopStream(algorand, dmClient, activeAddress!, appId, recipient)()
-    setLoding(false)
-    await fetchContractGlobalStateData(dmClient)
-    toast.success('Current Stream Stopped')
+    try {
+      setLoding(true)
+      await stopStream(algorand, dmClient, activeAddress!, appId, recipient)()
+      setLoding(false)
+      await fetchContractGlobalStateData(dmClient)
+      toast.success('Current Stream Stopped')
+    } catch (error) {
+      if (error instanceof Error) {
+        setLoding(false)
+        if (error.message.includes('CreatorAddress; ==; assert')) {
+          console.error('Caught a URLTokenBaseHTTPError:', error.message)
+          toast.error('Invalid User')
+        } else {
+          console.error('An error occurred:', error.message)
+        }
+      } else {
+        console.error('An unknown error occurred:', error)
+      }
+    }
   }
 
   const funcdeleteStream = async () => {
@@ -118,6 +132,7 @@ const Home: React.FC<HomeProps> = () => {
         console.log('Contract deletion confirmed:', deleteConfirmation)
         // await fetchContractGlobalStateData(dmClient)
         toast.success('Contract Deleted')
+        setAppId(0)
       } else {
         toast.error('Failed to confirm contract deletion')
       }
@@ -325,54 +340,67 @@ const Home: React.FC<HomeProps> = () => {
   }, [isStreaming, epochStreamfinishTime, streamFlowRate, streamContractBalance])
 
   return (
-    <div className="min-h-screen bg-cover " style={{ backgroundImage: "url('/blur.jpeg')" }}>
+    <div className="min-h-screen bg-custom-gradient">
+      <center>
+        <button
+          data-test-id="connect-wallet"
+          className="btn px-8 bg-purple-700 z-10 mt-2 right-2 hover:bg-purple-800 text-white pb-3 pt-2 text-xl rounded-2xl absolute "
+          onClick={toggleWalletModal}
+        >
+          Wallet Connection
+        </button>
+      </center>
       <div className="relative">
         <Nav />
       </div>
       <center>
-        <div>
+        <div className="">
           <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </center>
-      <div className=" ml-3 pb-2 mt-28 text-xl border-white border-solid border-2 text-white absolute rounded-2xl  p-1 max-w-md backdrop-blur-[5px] bg-[rgba(99,77,136,0.56)] ">
-        <p className=" mt-1 ml-1 ">ActiveStream : {isStreaming}</p>
-        <p className=" mt-2 ml-1 ">Balance : {userAccountBalance} Algos</p>
+      <div className="text-center text-[18px] text-white rounded-2xl mt-8 border-solid border-2 border-white p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.62)] mx-auto">
+        <div className="flex">
+          <p className="">Balance </p>
+          <p className="ml-auto">{userAccountBalance} Algos</p>
+        </div>
       </div>
-      <center>
-        <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
-          Wallet Connection
-        </button>
-      </center>
+      <div className="text-center rounded-2xl mt-2 border-solid border-2 border-white p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
+        {appId < 1 && (
+          <label className="block text-[19px] mb-2 font-medium text-gray-900 dark:text-white">Enter your appID or Deploy aggrement</label>
+        )}
+        {appId > 0 && <label className="block text-[19px] mb-2 font-medium text-gray-900 dark:text-white">Save your App ID</label>}
+        <input
+          type="number"
+          className="bg-gray-50 border border-gray-300 text-gray-900 text-[18px]  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          value={appId}
+          onChange={handleAppIdChange}
+        ></input>
+        {!activeAddress ? (
+          <button className="btn rounded-2xl bg-purple-700 hover:bg-purple-800 text-white  text-base mt-4" onClick={toggleWalletModal}>
+            Connect Wallet
+          </button>
+        ) : appId === 0 ? (
+          <button className="btn rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-lg mt-4" onClick={createStream}>
+            {loding ? <span className="loading loading-spinner" /> : 'Deploy Agreement contract'}
+          </button>
+        ) : null}
+      </div>
+
       {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div>
-          <div className="mt-6 flex max-w-md mx-auto mb-11  ">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
+        <div className="mt-5 hero">
+          <div className="mt-9 flex mx-auto mb-11 ">
+            <h2 className="text-[22px] font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
             <BlinkBlurB></BlinkBlurB>
-            <div className="text-white ml-10 text-xl font-semibold">
+            <div className="text-white ml-10 text-[22px] font-semibold">
               <AnimatedCounter from={displayFlowAmount} to={0} duration={animationDuration / 1000} />
             </div>
           </div>
         </div>
       )}
-      <div className="text-center rounded-2xl  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(78,62,104,0.56)]  mx-auto">
-        <div className="max-w-md">
-          <div className="grid ">
-            {/* <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1> */}
-            <label className="block mt-3 text-lg font-medium text-gray-900 dark:text-white">Your App ID</label>
-            <input
-              type="number"
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              value={appId}
-              onChange={handleAppIdChange}
-            ></input>
-            {activeAddress && appId === 0 && (
-              <button className="btn rounded-3xl text-base mt-4" onClick={createStream}>
-                {loding ? <span className="loading loading-spinner" /> : 'DeployAgreement'}
-              </button>
-            )}
-
-            {/* New fields for starting the stream */}
-            {activeAddress && appId > 0 && isStreaming === 0 && (
+      {activeAddress && appId > 0 && isStreaming === 0 && (
+        <div className="text-center rounded-2xl mt-12  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
+          <div className="max-w-md">
+            <div className="grid ">
               <div>
                 <h2 className="block mb-2 mt-4  text-2xl font-medium text-gray-900 dark:text-white">Create Payment Stream</h2>
                 <div className="mt-4">
@@ -417,7 +445,6 @@ const Home: React.FC<HomeProps> = () => {
                 </div>
                 <div className="mt-4">
                   <label className="block mr-80  text-lg font-medium text-gray-900 dark:text-white">Amount</label>
-
                   <input
                     type="number"
                     placeholder="Amount (Algos)"
@@ -438,13 +465,13 @@ const Home: React.FC<HomeProps> = () => {
                 {activeAddress && (
                   <div className="mt-3">
                     <button
-                      className="btn rounded-3xl text-lg mt-4 bg-[#fdfdfd] from-green-500 to-green-600 hover:bg-gradient-to-bl"
+                      className="btn rounded-2xl text-lg mt-4 bg-purple-700 hover:bg-purple-800 text-white"
                       onClick={handleStartStream}
                     >
                       {loding ? <span className="loading loading-spinner" /> : 'CreateStream'}
                     </button>
                     <button
-                      className="btn rounded-3xl ml-9 text-lg mt-4 bg-[#fdfdfd] from-red-500 to-red-500 hover:bg-gradient-to-bl"
+                      className="btn  ml-9 text-lg mt-4 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white"
                       onClick={funcdeleteStream}
                     >
                       DeleteAgreement
@@ -452,50 +479,73 @@ const Home: React.FC<HomeProps> = () => {
                   </div>
                 )}
               </div>
-            )}
-            {/* <button className="btn m-2" onClick={handleWithdraw}>
-              Withdraw
-            </button> */}
-            {activeAddress && appId > 0 && isStreaming === 1 && (
-              <div className="">
-                {/* <button className="btn rounded-full m-2" onClick={streamendtime}>
-                  GetEndTime
-                </button> */}
-                <button className="btn rounded-3xl text-lg mr-6 mt-4 bg-red-100" onClick={funcStopStream}>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* {activeAddress && appId > 0 && isStreaming === 1 && (
+        <div className="text-center rounded-2xl mt-2  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
+          <div className="">
+            <button className="btn rounded-2xl text-lg mr-6 mt-4 bg-purple-700 hover:bg-purple-800 text-white" onClick={funcStopStream}>
+              {loding ? <span className="loading loading-spinner" /> : 'StopStream'}
+            </button>
+            <button className="btn text-lg mt-4 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white" onClick={funcdeleteStream}>
+              DeleteAgreement
+            </button>
+          </div>
+        </div>
+      )} */}
+      {activeAddress && appId > 0 && isStreaming === 1 && (
+        <div className="hero antialiased text-[21px]">
+          <div className="backdrop-blur-[5px] bg-[rgba(44,33,59,0.48)]  p-4 rounded-2xl mt-5 mb-5 border-white border-solid border-2">
+            <table className="border-3  text-gray-500 dark:text-gray-400">
+              <tbody>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-1 ">Receiver</th>
+                  <th className="text-white ml-32 mr-2 ">{reciverAddress}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">TotalContractBalance</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{streamContractBalance} Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">StreamStartTime</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{streamStartTime}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">StreamfinishTime</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{streamFinishTime}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">AlgoFlowRate</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{streamFlowRate} P/Sec Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">TotalWithdrawAmount</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{totalUserWithdraw} Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">ActiveStream</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{isStreaming} </th>
+                </tr>
+              </tbody>
+            </table>
+            <div className="mt-2">
+              <center>
+                <button
+                  className="btn rounded-2xl font-medium text-[22px] mr-6 mt-4 bg-purple-700 hover:bg-purple-800 text-white"
+                  onClick={funcStopStream}
+                >
                   {loding ? <span className="loading loading-spinner" /> : 'StopStream'}
                 </button>
                 <button
-                  className="btn rounded-3xl text-lg mt-4 bg-[#fdfdfd] from-red-500 to-red-500 hover:bg-gradient-to-bl"
+                  className="btn text-[22px] mt-4  font-medium rounded-2xl bg-purple-700 hover:bg-purple-800 text-white"
                   onClick={funcdeleteStream}
                 >
                   DeleteAgreement
                 </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div className="hero text-lg">
-          <div className="backdrop-blur-[5px] bg-[rgba(72,57,95,0.48)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 hover:bg-violet-800 duration-300">
-            <p className="flex text-white font-bold mt-1">
-              Receiver <p className="text-white ml-32 mr-2 ">{reciverAddress}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              TotalContractBalance <p className="text-green-300 ml-auto mr-2 ">{streamContractBalance} Algos</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              StreamfinishTime <p className="text-white ml-auto  mr-2 ">{streamFinishTime}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              StreamStartTime <p className="text-white ml-auto  mr-2"> {streamStartTime}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              AlgoFlowRate <p className="text-white ml-auto  mr-2"> {streamFlowRate} P/Sec Algos</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              TotalWithdrawAmount <p className="text-red-200 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
-            </p>
+              </center>
+            </div>
           </div>
         </div>
       )}

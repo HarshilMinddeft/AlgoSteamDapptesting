@@ -133,7 +133,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
 
       if (currentTime >= epochStreamfinishTime) {
         // console.log('Stream has ended')
-        toast.info('Stream has ended')
+        // toast.info('Stream has ended')
         setAnimationDuration(0)
         setFinalDisplayAmount(streamContractBalance)
         return // Stop further calculations

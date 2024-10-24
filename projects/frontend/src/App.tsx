@@ -5,6 +5,7 @@ import { PROVIDER_ID, ProvidersArray, WalletProvider, useInitializeProviders } f
 import algosdk from 'algosdk'
 import { SnackbarProvider } from 'notistack'
 import { Route, Routes } from 'react-router-dom'
+import AccountHistory from './AccountHistory'
 import Home from './Home'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 import Withdraw from './Withdraw'
@@ -55,6 +56,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/Withdraw" element={<Withdraw />} />
+          <Route path="/History" element={<AccountHistory />} />
         </Routes>
       </WalletProvider>
     </SnackbarProvider>

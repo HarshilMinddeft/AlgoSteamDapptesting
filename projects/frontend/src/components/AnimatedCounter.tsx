@@ -5,7 +5,7 @@ import { useRef } from 'react'
 type AnimatedCounterProps = {
   from: number
   to: number
-  duration: number // Animation duration
+  duration: number
   animationOptions?: KeyframeOptions
 }
 

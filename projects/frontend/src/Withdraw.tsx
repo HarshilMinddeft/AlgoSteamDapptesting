@@ -10,7 +10,7 @@ import BlinkBlurB from './components/Loders'
 import Nav from './components/Nav'
 import Transact from './components/Transact'
 import { SteamClient } from './contracts/Steam'
-import { getCurrentWithdawamount, withdraw } from './methods'
+import { withdraw } from './methods'
 import { getAlgodConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
 interface WithdrawProps {}
@@ -19,9 +19,10 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   const [openWalletModal, setOpenWalletModal] = useState<boolean>(false)
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [appId, setAppId] = useState<number>(0)
+  const [inputAppId, setInputAppId] = useState<number | null>(null)
   const { activeAddress, signer } = useWallet()
   const [isStreaming, setIsStreaming] = useState<number>(0)
-  const [currentwithdrawAmount, setCurrentwithdrawAmount] = useState<number>(0)
+  // const [currentwithdrawAmount, setCurrentwithdrawAmount] = useState<number>(0)
   const [streamContractBalance, setStreamContractBalance] = useState<number>(0)
   const [streamStartTime, setStreamStartTime] = useState<string>()
   const [streamFinishTime, setStreamFinishTime] = useState<string>()
@@ -51,6 +52,18 @@ const Withdraw: React.FC<WithdrawProps> = () => {
     algorand.client.algod,
   )
 
+  const handleAppIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const inputAppId = Number(event.target.value)
+
+    setInputAppId(inputAppId)
+
+    if (inputAppId > 0) {
+      validateAppId(inputAppId)
+    } else {
+      toast.error('Please enter a valid number for the App ID.')
+    }
+  }
+
   const validateAppId = async (inputAppId: number) => {
     try {
       // Fetch the application details using the input app ID
@@ -72,17 +85,6 @@ const Withdraw: React.FC<WithdrawProps> = () => {
           toast.error('Failed to validate App ID. Please try again.')
         }
       }
-    }
-  }
-
-  const handleAppIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const inputAppId = Number(event.target.value)
-
-    if (!isNaN(inputAppId) && inputAppId > 0) {
-      // Validate the app ID when user enters it
-      validateAppId(inputAppId)
-    } else {
-      toast.error('Please enter a valid number for the App ID.')
     }
   }
 
@@ -117,11 +119,11 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   //   await streamEndTime(algorand, dmClient, activeAddress!, appId)()
   // }  // Was used for accurate testing stream end time off-chain and on-chain
 
-  const currentWithdrawAmount = async () => {
-    const availableAmount = await getCurrentWithdawamount(algorand, dmClient, activeAddress!, appId)()
-    const availableAmountAlgo = availableAmount / 1000000
-    setCurrentwithdrawAmount(availableAmountAlgo)
-  }
+  // const currentWithdrawAmount = async () => {
+  //   const availableAmount = await getCurrentWithdawamount(algorand, dmClient, activeAddress!, appId)()
+  //   const availableAmountAlgo = availableAmount / 1000000
+  //   setCurrentwithdrawAmount(availableAmountAlgo)
+  // }
   //FIF
   const calculateAnimationDuration = () => {
     if (streamFlowRate > 0 && streamContractBalance > 0) {
@@ -233,7 +235,16 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   }, [isStreaming, epochStreamfinishTime, streamFlowRate, streamContractBalance])
 
   return (
-    <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/blur.jpeg')" }}>
+    <div className="min-h-screen bg-custom-gradient">
+      <center>
+        <button
+          data-test-id="connect-wallet"
+          className="btn px-8 bg-purple-700 z-10 mt-2 right-2 hover:bg-purple-800 text-white pb-3 pt-2 text-xl rounded-2xl absolute "
+          onClick={toggleWalletModal}
+        >
+          {!activeAddress ? 'Connect Wallet' : activeAddress && `Balance ${userAccountBalance} algos`}
+        </button>
+      </center>
       <div className="relative">
         <Nav />
       </div>
@@ -242,76 +253,97 @@ const Withdraw: React.FC<WithdrawProps> = () => {
           <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </center>
-      <p className="absolute mt-6 ml-1 text-xl rounded-2xl p-1 text-red-400 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
-        ActiveStream : {isStreaming}
-      </p>
-      <p className="absolute mt-20 ml-1 text-xl rounded-2xl p-1 text-red-50 backdrop-blur-[5px] bg-[rgba(34,30,41,0.39)] ">
-        Your Balance : {userAccountBalance} Algos
-      </p>
-      <center>
-        <button data-test-id="connect-wallet" className="btn px-48  pb-3 pt-2 text-xl  rounded-2xl mt-5 mb-5 " onClick={toggleWalletModal}>
-          Wallet Connection
-        </button>
-      </center>
+      {/* <div className="text-center text-[18px] text-white rounded-2xl mt-8 border-solid border-2 border-white p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.62)] mx-auto">
+        <div className="flex">
+          <p className="">Balance </p>
+          <p className="ml-auto">{userAccountBalance} Algos</p>
+        </div>
+      </div> */}
+      <div className="text-center rounded-2xl mt-8 border-solid border-2 border-white p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)] mx-auto">
+        <div className="max-w-md">
+          <label className="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Enter Your app ID</label>
+          <input
+            type="number"
+            placeholder="Enter your AppId"
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-[18px]  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            value={inputAppId || ''}
+            onChange={handleAppIdChange}
+          ></input>
+          {!activeAddress && (
+            <button className="btn rounded-2xl bg-purple-700 hover:bg-purple-800 text-white  text-base mt-4" onClick={toggleWalletModal}>
+              Connect Wallet
+            </button>
+          )}
+        </div>
+      </div>
       {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div>
-          <div className="mt-6 flex max-w-md mx-auto mb-11  ">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
+        <div className="mt-20 ml-[740px]">
+          <div className="mb-11 flex">
+            <h2 className="text-[22px] font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
             <BlinkBlurB></BlinkBlurB>
-            <div className="text-white ml-10 text-xl font-semibold">
+            <div className="text-white ml-10 text-[22px] font-semibold ">
               <AnimatedCounter from={finalDisplayAmount} to={streamContractBalance} duration={animationDuration / 1000} />
             </div>
           </div>
         </div>
       )}
-      <div className="text-center rounded-2xl p-6 max-w-md backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  mx-auto">
-        <div className="max-w-md">
-          <div className="grid ">
-            {/* <h1 className="text-red-700">Enter Flow rate and algos in microAlgos </h1> */}
-            <label className="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Enter Your app ID</label>
-            <input
-              type="number"
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  rounded-lg focus:ring-blue-500  focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              value={appId}
-              onChange={handleAppIdChange}
-            ></input>
-            {activeAddress && appId > 0 && isStreaming === 1 && (
-              <div className="">
-                <button className="btn rounded-3xl  mr-6 text-lg mt-4" onClick={currentWithdrawAmount}>
+      {activeAddress && appId > 0 && isStreaming === 1 && (
+        <div className="hero antialiased text-[21px]">
+          <div className="backdrop-blur-[5px] bg-[rgba(44,33,59,0.48)]  p-4 rounded-2xl mt-5 mb-5 border-white border-solid border-2">
+            <table className="border-3  text-gray-500 dark:text-gray-400">
+              <tbody>
+                {/* <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-1 ">Current Available Amount</th>
+                  <th className="text-green-300 ml-auto mr-2 ">{currentwithdrawAmount} Algos</th>
+                </tr> */}
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-1 ">Your Address</th>
+                  <th className="text-white ml-32 mr-2 ">{reciverAddress}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">TotalContractBalance</th>
+                  <th className="text-green-400 ml-auto mt-1 mr-2 ">{streamContractBalance} Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">StreamStartTime</th>
+                  <th className="text-white ml-auto mt-1 mr-2 ">{streamStartTime}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">StreamfinishTime</th>
+                  <th className="text-white ml-auto mt-1 mr-2 ">{streamFinishTime}</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">AlgoFlowRate</th>
+                  <th className="text-white ml-auto mt-1 mr-2 ">{streamFlowRate} P/Sec Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">TotalWithdrawAmount</th>
+                  <th className="text-red-400 ml-auto mt-1 mr-2 ">{totalUserWithdraw} Algos</th>
+                </tr>
+                <tr className="flex border-solid border-b border-slate-200">
+                  <th className="text-white font-medium mt-2">ActiveStream</th>
+                  <th className="text-green-300 ml-auto mt-1 mr-2 ">{isStreaming} </th>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="mt-3 mb-3">
+              <center>
+                {/* <button
+                  className="btn rounded-2xl  font-medium text-[22px] mr-6 mt-4 bg-purple-700 hover:bg-purple-800 text-white"
+                  onClick={currentWithdrawAmount}
+                >
                   CheckAvailableAmount
-                </button>
-                <button className="btn rounded-3xl bg-green-200 text-lg mr-2 mt-4" onClick={handleWithdraw}>
+                </button> */}
+
+                <button
+                  className="btn text-[23px] px-52 mt-4  font-medium rounded-2xl bg-purple-700 hover:bg-purple-800 text-white"
+                  onClick={handleWithdraw}
+                >
                   Withdraw
                 </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div className="hero text-xl">
-          <div className="backdrop-blur-[5px] bg-[rgba(89,71,117,0.39)]  p-5 rounded-2xl mt-5 mb-5 border-white border-solid border-2 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 hover:bg-violet-800 duration-300">
-            <p className="flex text-white font-bold mt-1">
-              Current Available Amount <p className="text-green-300 ml-auto  mr-2">{currentwithdrawAmount} Algos</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Your Wallet Address <p className="text-white ml-32 mr-2 ">{reciverAddress}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Total Contract Balance <p className=" text-red-100 ml-auto mr-2 ">{streamContractBalance} Algos</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Stream Finish Time <p className="text-white ml-auto  mr-2 ">{streamFinishTime}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Stream Start Time <p className="text-white ml-auto  mr-2"> {streamStartTime}</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Algo FlowRate <p className="text-white ml-auto  mr-2"> {streamFlowRate} P/Sec Algos</p>
-            </p>
-            <p className="flex text-white font-bold mt-1">
-              Total Withdraw Amount <p className="text-green-300 ml-auto  mr-2">{totalUserWithdraw} Algos</p>
-            </p>
+              </center>
+            </div>
           </div>
         </div>
       )}

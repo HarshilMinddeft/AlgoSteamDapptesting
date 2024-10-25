@@ -208,17 +208,13 @@ const Withdraw: React.FC<WithdrawProps> = () => {
   }
   useEffect(() => {
     if (dmClient) {
-      userBalanceFetch()
+      userBalanceFetch();
+      if (appId > 0) {
+        fetchIsStreaming(dmClient);
+        fetchContractGlobalStateData(dmClient);
+      }
     }
-  }, [dmClient])
-
-  useEffect(() => {
-    if (appId > 0 && dmClient) {
-      fetchIsStreaming(dmClient)
-      fetchContractGlobalStateData(dmClient)
-      calculateAnimationDuration()
-    }
-  }, [appId, activeAddress, dmClient])
+  }, [dmClient, appId ,activeAddress]);
 
   // Effect hook to continuously check the stream status
   useEffect(() => {
@@ -336,12 +332,17 @@ const Withdraw: React.FC<WithdrawProps> = () => {
                   CheckAvailableAmount
                 </button> */}
 
-                <button
-                  className="btn text-[23px] px-52 mt-4  font-medium rounded-2xl bg-purple-700 hover:bg-purple-800 text-white"
-                  onClick={handleWithdraw}
+            <div className="relative group">
+              <button
+                className="btn text-[23px] px-52 mt-4 font-medium rounded-2xl bg-purple-700 hover:bg-purple-800 text-white"
+                 onClick={handleWithdraw}
                 >
-                  Withdraw
-                </button>
+               Withdraw
+              </button>
+              <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 text-center text-white bg-gray-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              This action will withdraw funds.
+              </span>
+                </div>
               </center>
             </div>
           </div>

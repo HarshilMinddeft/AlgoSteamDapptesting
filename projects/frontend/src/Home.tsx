@@ -42,6 +42,8 @@ const Home: React.FC<HomeProps> = () => {
   const [displayFlowAmount, setdisplayFlowAmount] = useState(0)
   const [epochStreamfinishTime, setepochStreamfinishTime] = useState<number>(0)
   const [navigationMod, setNavigationMod] = useState<string>('DeployApp')
+  const [internalTxns, setInternalTxns] = useState<Array<{ amount: number; receiver: string }>>([])
+
 
   const toggleWalletModal = () => {
     setOpenWalletModal(!openWalletModal)
@@ -140,7 +142,8 @@ const Home: React.FC<HomeProps> = () => {
   const funcStopStream = async () => {
     try {
       setLoding(true)
-      await stopStream(algorand, dmClient, activeAddress!, appId, recipient)()
+      const transactions = await stopStream(algorand, dmClient, activeAddress!, appId, recipient)()
+      setInternalTxns(transactions)
       setLoding(false)
       await fetchContractGlobalStateData(dmClient)
       toast.success('Current Stream Stopped')
@@ -338,15 +341,15 @@ const Home: React.FC<HomeProps> = () => {
 
   useEffect(() => {
     if (appId > 0) updateStreamRate(amount, timeUnit)
-    console.log('UseEffect1')
+
   }, [])
+
 
   useEffect(() => {
     if (dmClient) {
       userBalanceFetch()
-      console.log('UseEffect2')
     }
-  }, [dmClient])
+  }, [dmClient,activeAddress])
 
   useEffect(() => {
     if (streamRate > 0 && amount > 0) {
@@ -354,31 +357,28 @@ const Home: React.FC<HomeProps> = () => {
       console.log('UseEffect3')
     } else {
       setApproxEndTime('')
-      console.log('UseEffect3+1')
+
     }
-  }, [streamRate, amount])
+  }, [streamRate, amount ,activeAddress])
 
   useEffect(() => {
     if (appId > 0 && dmClient) {
       fetchIsStreaming(dmClient)
       fetchContractGlobalStateData(dmClient)
       calculateAnimationDuration()
-      console.log('UseEffect4')
     }
   }, [appId, activeAddress, dmClient])
-  // Effect hook to continuously check the stream status
+
   useEffect(() => {
     if (Date.now() / 1000 < epochStreamfinishTime) {
       const interval = setInterval(() => {
         calculateAnimationDuration()
       }, 1000)
-      console.log('UseEffect5')
       return () => clearInterval(interval)
     }
     return () => {
       setdisplayFlowAmount(0)
       setAnimationDuration(0)
-      console.log('UseEffect5+1')
     }
   }, [isStreaming, epochStreamfinishTime, streamFlowRate, streamContractBalance])
 
@@ -402,6 +402,7 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       </center>
       {appId == 0 && (
+
         <div className="flex flex-row justify-center mt-40">
           <div className=" px-[10px] flex flex-row items-center ">
             <div className="py-[1px] rounded-3xl text-gray-200">
@@ -455,7 +456,7 @@ const Home: React.FC<HomeProps> = () => {
       )}
       {appId == 0 && activeAddress && navigationMod == 'SearchApp' && (
         <div className="text-center rounded-2xl mt-3 border-solid border-2 border-slate-800 p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
-          <label className="block text-[19px] mb-2 font-medium text-gray-900 dark:text-white">Search for existing steram</label>
+          <label className="block text-[19px] mb-4 font-medium text-gray-900 dark:text-white">Search for existing steram</label>
           <input
             type="number"
             placeholder="Enter AppId"
@@ -475,8 +476,9 @@ const Home: React.FC<HomeProps> = () => {
           ></input>
         </div>
       )}
+
       {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div className="mt-16 ml-[740px] ">
+        <div className="mt-20 ml-[740px]">
           <div className="mb-11 flex">
             <h2 className="text-[22px] font-medium text-gray-900 dark:text-white mr-8">Flow Started</h2>
             <BlinkBlurB></BlinkBlurB>
@@ -486,8 +488,34 @@ const Home: React.FC<HomeProps> = () => {
           </div>
         </div>
       )}
+
+      {activeAddress && appId > 0 && isStreaming === 0 && internalTxns.length > 0 &&(
+        <center>
+      <div className="backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)] mt-8 w-[900px] p-2 rounded-2xl mb-5  border-solid border-2">
+        <h3 className='block mb-2 text-lg text-center font-medium text-gray-900 dark:text-white'>Recent Stream Distributed Amounts</h3>
+          {internalTxns.length > 0 ? (
+           <ul>
+            <ul className='flex mb-2 text-lg font-normal text-gray-900 dark:text-white'>
+            <li >Receiver</li>
+              <li className='ml-auto'>Amount</li>
+            </ul>
+            {internalTxns.map((txn, index) => (
+             <li className='flex  mb-2 text-base font-normal text-gray-900 dark:text-white' key={index}>
+                {txn.receiver} <p className='ml-auto '>{txn.amount}</p>
+          </li>
+
+             ))}
+           </ul>
+           ) : (
+         <p>No internal transactions found.</p>
+         )}
+       </div>
+       </center>
+      )}
+
       {activeAddress && appId > 0 && isStreaming === 0 && (
-        <div className="text-center  rounded-2xl mt-24  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
+
+        <div className="text-center  rounded-2xl mt-11  p-6 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
           <div className="max-w-md">
             <div className="grid ">
               <div>
@@ -601,7 +629,7 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       )}
       {activeAddress && appId > 0 && isStreaming === 1 && (
-        <div className="hero antialiased mt-20 text-[21px]">
+        <div className="hero antialiased mt-16 text-[21px]">
           <div className="backdrop-blur-[5px] bg-[rgba(44,33,59,0.48)]  p-4 rounded-2xl mb-5 border-white border-solid border-2">
             <table className="border-3  text-gray-500 dark:text-gray-400">
               <tbody>

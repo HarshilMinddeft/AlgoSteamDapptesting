@@ -78,7 +78,7 @@ const AccountHistory: React.FC<AccountHistoryProps> = () => {
       <center>
         <div className="w-[820px] antialiased mt-20 text-[21px]">
           <h2 className="text-white font-medium mb-6 text-[30px]">All Created Applications</h2>
-          <div className="backdrop-blur-[5px] bg-[rgba(44,33,59,0.48)] p-4 rounded-2xl mb-5 border-white border-solid border-2">
+          <div className="backdrop-blur-[5px] bg-[rgba(44,33,59,0.48)] p-4 rounded-2xl border-white border-solid border-2">
             <table className="border-3 w-full text-gray-500 dark:text-gray-400">
               <thead>
                 <tr className="flex">

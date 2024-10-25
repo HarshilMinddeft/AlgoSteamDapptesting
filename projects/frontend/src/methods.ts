@@ -49,8 +49,8 @@ export function startStream(
       const streamRateInMicroAlgos = convertToMicroAlgos(streamRate)
       const appAddress = getApplicationAddress(appId)
       const algoAmount = algokit.microAlgos(Number(amount) + 100000) // for min bal
-      console.log('after Stream Rate:', streamRate)
-      console.log('After Amount:', algoAmount)
+      // console.log('after Stream Rate:', streamRate)
+      // console.log('After Amount:', algoAmount)
 
       // Start the stream
       const startStreamResult = await steamAbiClient.startStream({ recipient, rate: streamRateInMicroAlgos, amount: amount })
@@ -64,11 +64,11 @@ export function startStream(
         receiver: appAddress, // The smart contract's app address
         amount: algoAmount, // Amount to transfer to the contract
       })
-      console.log('Payment transaction ID:', paymentTxn.txIds)
-      console.log('Payment transaction sent:', paymentTxn.returns)
+      // console.log('Payment transaction ID:', paymentTxn.txIds)
+      // console.log('Payment transaction sent:', paymentTxn.returns)
 
-      console.log('before Stream Rate:', streamRateInMicroAlgos)
-      console.log('before Amount:', amount)
+      // console.log('before Stream Rate:', streamRateInMicroAlgos)
+      // console.log('before Amount:', amount)
 
       // Log contract state after starting the stream
       const streamData = await steamAbiClient.getGlobalState()
@@ -79,13 +79,13 @@ export function startStream(
       const StreamStartTime = streamData.lastStartTime?.asNumber()
       const recipitentAccount = streamData.recipient?.asString()
       const streamRateData = streamData.streamRate?.asNumber()
-      console.log('SreamRateData =>', streamRateData)
-      console.log('ReciverAccount=>', recipitentAccount)
-      console.log('LastStartTime', StreamStartTime)
-      console.log('Total Amount withdraw', TotalWithdraw)
-      console.log('Balance Left:', balance)
-      console.log('Stream End Time:', endTime)
-      console.log('Is Streaming:', isStreaming)
+      // console.log('SreamRateData =>', streamRateData)
+      // console.log('ReciverAccount=>', recipitentAccount)
+      // console.log('LastStartTime', StreamStartTime)
+      // console.log('Total Amount withdraw', TotalWithdraw)
+      // console.log('Balance Left:', balance)
+      // console.log('Stream End Time:', endTime)
+      // console.log('Is Streaming:', isStreaming)
     } catch (error) {
       console.error('Failed to start stream:', error)
     }
@@ -100,7 +100,7 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
 
       // Fetch suggested transaction parameters (includes fee, first valid, etc.)
       const suggestedParams = await algorand.getSuggestedParams()
-      console.log('Suggested Transaction Params:', suggestedParams)
+      // console.log('Suggested Transaction Params:', suggestedParams)
 
       // Prompt user for a fee
       const userFee = parseFloat('0.01')
@@ -132,9 +132,9 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
 
       // Check for confirmation
       if (withdrawResult.confirmation) {
-        console.log('Withdrawal Successful:', withdrawResult.confirmation)
+        // console.log('Withdrawal Successful:', withdrawResult.confirmation)
         const streamData = await steamAbiClient.getGlobalState()
-        console.log('Stream Data:', streamData) // Log the entire streamData object for inspection
+        // console.log('Stream Data:', streamData) // Log the entire streamData object for inspection
         const balance = streamData.balance?.asNumber()
         const endTime = streamData.endTime?.asNumber()
         const isStreaming = streamData.isStreaming?.asNumber()
@@ -142,13 +142,13 @@ export function withdraw(algorand: algokit.AlgorandClient, steamAbiClient: Steam
         const StreamStartTime = streamData.lastStartTime?.asNumber()
         const recipitentAccount = streamData.recipient?.asString()
         const streamRateData = streamData.streamRate?.asNumber()
-        console.log('SreamRateData =>', streamRateData)
-        console.log('ReciverAccount=>', recipitentAccount)
-        console.log('LastStartTime', StreamStartTime)
-        console.log('Total Amount withdraw', TotalWithdraw)
-        console.log('Balance Left:', balance)
-        console.log('Stream End Time:', endTime)
-        console.log('Is Streaming:', isStreaming)
+        // console.log('SreamRateData =>', streamRateData)
+        // console.log('ReciverAccount=>', recipitentAccount)
+        // console.log('LastStartTime', StreamStartTime)
+        // console.log('Total Amount withdraw', TotalWithdraw)
+        // console.log('Balance Left:', balance)
+        // console.log('Stream End Time:', endTime)
+        // console.log('Is Streaming:', isStreaming)
         return { success: true }
       } else {
         throw new Error('Withdrawal failed: No confirmation received.')
@@ -170,10 +170,11 @@ export function stopStream(
   return async () => {
     try {
       console.log('recipientaccount')
+      const internalTransactions: Array<{ amount: number, receiver: string }> = []
       const appAddress = getApplicationAddress(appId)
       const stopStreamM = await steamAbiClient.stopStream({}, { sendParams: { fee: algokit.algos(0.01), populateAppCallResources: true } })
       const streamData = await steamAbiClient.getGlobalState()
-      console.log('StopStream confirmations=>', stopStreamM.confirmations)
+      // console.log('StopStream confirmations=>', stopStreamM.confirmations)
       // Check if there are inner transactions
       if (stopStreamM.confirmations && stopStreamM.confirmations.length > 0) {
         const confirmation = stopStreamM.confirmations[0]
@@ -185,12 +186,18 @@ export function stopStream(
           // Loop through each internal transaction and log its details
           confirmation.innerTxns.forEach((innerTxn, index) => {
             console.log(`Internal Transaction ${index + 1}:`)
-
             const txnDetails = innerTxn.txn
+            const amount = Number(txnDetails.txn.amt) / 1000000
+            const receiver = algosdk.encodeAddress(txnDetails.txn.rcv as any)
+
+            internalTransactions.push({
+              amount,
+              receiver,
+            })
 
             console.log('Amount:', Number(txnDetails.txn.amt) / 1000000)
             console.log('Sender:', algosdk.encodeAddress(txnDetails.txn.snd))
-            // console.log('Receiver:', algosdk.encodeAddress(txnDetails.txn.rcv))
+            // console.log('ReceiverEncodeLease:', algokit.encodeLease(txnDetails.txn.rcv))
             console.log('First valid round:', txnDetails.txn.fv)
             console.log('Last valid round:', txnDetails.txn.lv)
           })
@@ -200,8 +207,8 @@ export function stopStream(
       } else {
         console.log('No confirmations found.')
       }
+      return internalTransactions
     } catch (error) {
-      // console.log('Error', error)
       throw error
     }
   }

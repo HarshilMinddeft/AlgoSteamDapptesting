@@ -27,7 +27,7 @@ const Nav = () => {
               <Link
                 to="/"
                 onClick={handleReload}
-                className={`text-white mt-1 ml-8 border-[#170c31f5]  hover:bg-gradient-to-bl from-[#170c31f5] to-[#170c31f5] font-medium rounded-xl text-[19px] px-5 py-2 text-center me-2 mb-2
+                className={`text-white mt-1 ml-4 border-[#170c31f5]  hover:bg-gradient-to-bl from-[#170c31f5] to-[#170c31f5] font-medium rounded-xl text-[19px] px-5 py-2 text-center me-2 mb-2
                   ${isActive('/') ? 'bg-[#170c31f5] border-[#2d1672dc] from-[#170c31f5] to-[#170c31f5] hover:bg-gradient-to-bl' : ''}`}
               >
                 CreatorDashboard

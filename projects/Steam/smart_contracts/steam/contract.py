@@ -79,7 +79,7 @@ class Steam(ARC4Contract):
     @arc4.abimethod(allow_actions=["NoOp"])
     def withdraw(self) -> None:
         assert Txn.sender == self.recipient  # Only the recipient can withdraw
-        last_withdrawal_Amount = self._calculateStreamedAmount()
+        self.last_withdrawal_Amount = self._calculateStreamedAmount()
         available_amount = self._calculateStreamedAmount()
 
         # Ensure the available amount does not exceed the contract balance

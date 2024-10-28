@@ -152,7 +152,7 @@ const Home: React.FC<HomeProps> = () => {
         setLoding(false)
         if (error.message.includes('CreatorAddress; ==; assert')) {
           console.error('Caught a URLTokenBaseHTTPError:', error.message)
-          toast.error('Invalid User')
+          toast.error('You are not owner of this stream')
         } else {
           console.error('An error occurred:', error.message)
         }
@@ -171,7 +171,7 @@ const Home: React.FC<HomeProps> = () => {
         toast.success('Contract Deleted')
         setAppId(0)
       } else {
-        toast.error('Failed to confirm contract deletion')
+        toast.error('You are not owner of this stream')
       }
     } catch (error) {
       console.error('Error deleting contract:', error)
@@ -454,7 +454,7 @@ const Home: React.FC<HomeProps> = () => {
           ) : null}
         </div>
       )}
-      {appId == 0 && activeAddress && navigationMod == 'SearchApp' && (
+      {appId == 0 && activeAddress && navigationMod == 'SearchApp' ? (
         <div className="text-center rounded-2xl mt-3 border-solid border-2 border-slate-800 p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
           <label className="block text-[19px] mb-4 font-medium text-gray-900 dark:text-white">Search for existing steram</label>
           <input
@@ -464,7 +464,12 @@ const Home: React.FC<HomeProps> = () => {
             onChange={handleAppIdChange}
           ></input>
         </div>
-      )}
+      ): !activeAddress && navigationMod == 'SearchApp' ?(  <button
+        className="btn hero rounded-2xl bg-purple-700 hover:bg-purple-800 max-w-md  text-white text-[20px] px-11 mt-4 mx-auto"
+        onClick={toggleWalletModal}
+      >
+        Connect Wallet
+      </button>):null}
       {activeAddress && appId > 0 && isStreaming === 1 && (
         <div className="text-center rounded-2xl mt-11 border-solid border-2 slate-800 p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)]  mx-auto">
           <label className="block text-[19px] mb-2 font-medium text-gray-900 dark:text-white">Application ID</label>

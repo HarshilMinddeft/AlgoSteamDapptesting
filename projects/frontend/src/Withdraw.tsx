@@ -104,7 +104,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
             toast.error('Transaction rejected by user')
           } else {
             if (error.message.includes('opcodes=assert; ==; assert')) console.error('An error occurred during withdrawal:', error.message)
-            toast.error('InvalidUser')
+            toast.error('you are not allowed to withdraw')
           }
         } else {
           console.error('An unknown error occurred:', error)

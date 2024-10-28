@@ -255,6 +255,7 @@ const Withdraw: React.FC<WithdrawProps> = () => {
           <p className="ml-auto">{userAccountBalance} Algos</p>
         </div>
       </div> */}
+
       <div className="text-center rounded-2xl mt-8 border-solid border-2 border-white p-4 max-w-md backdrop-blur-[5px] bg-[rgba(21,6,29,0.8)] mx-auto">
         <div className="max-w-md">
           <label className="block mb-2 text-lg font-medium text-gray-900 dark:text-white">Enter Your app ID</label>

@@ -6,6 +6,8 @@ This is your workspace root. A `workspace` in AlgoKit is an orchestrated collect
 
 By default, `projects_root_path` parameter is set to `projects`. Which instructs AlgoKit CLI to create a new directory under `projects` directory when new project is instantiated via `algokit init` at the root of the workspace.
 
+Inside projects there are two projects Stream(Smartcontract) and frontend 
+
 ## Getting Started
 
 To get started refer to `README.md` files in respective sub-projects in the `projects` directory.

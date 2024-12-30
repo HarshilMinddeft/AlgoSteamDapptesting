@@ -49,11 +49,9 @@ Path=> projects/Steam/smart_contracts/steam/contract.py
 ✈️  frontend folder is for Frontend code                                    
 | Below files consist core code.
 
-Path=> AquaFlowV2/projects/frontend/src/Home.tsx,
+Path=> projects/frontend/src/Home.tsx
 
 | RestartStream.tsx,
-
-| SearchStream.tsx,
 
 | Withdraw.tsx,
 

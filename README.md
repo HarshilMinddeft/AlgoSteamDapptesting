@@ -42,9 +42,7 @@
 
 ✈️  AquaFlowV2 folder is for smartContract      
 
-Path=> AquaFlowV2/projects/AquaFlowV2/smart_contracts
-/AquaFlowV2/ Contract.py
-
+Path=> projects/Steam/smart_contracts/steam/contract.py
 ************************************************************************************************                                                  
 ## Frontend ⚡
 
